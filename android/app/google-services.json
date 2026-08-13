@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "806043921061",
+    "project_id": "nagardrishti-facec",
+    "storage_bucket": "nagardrishti-facec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:806043921061:android:85cecdaa9c758319377b4c",
+        "android_client_info": {
+          "package_name": "com.example.nagardrishti"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCGwHYxX49RxYErZdroN7i-458lPEVC8j4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -5,6 +5,8 @@ import '../../data/ai_classification_service.dart';
 import '../../data/location_service.dart';
 import '../../data/speech_service.dart';
 import '../../../issues/data/issues_repository.dart';
+import '../../../issues/data/duplicate_detection_service.dart';
+import '../../../notifications/data/notification_service.dart';
 import '../../../issues/domain/issue_model.dart';
 import '../../../../core/constants/app_constants.dart';
 
@@ -18,6 +20,14 @@ final locationServiceProvider = Provider<LocationService>((ref) {
 
 final speechServiceProvider = Provider<SpeechService>((ref) {
   return SpeechToTextService();
+});
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return FcmNotificationService();
+});
+
+final duplicateDetectionServiceProvider = Provider<DuplicateDetectionService>((ref) {
+  return HaversineDuplicateDetectionService();
 });
 
 final issuesRepositoryProvider = Provider<IssuesRepository>((ref) {
@@ -93,12 +103,16 @@ class ReportController extends StateNotifier<ReportState> {
   final LocationService locationService;
   final SpeechService speechService;
   final IssuesRepository issuesRepository;
+  final DuplicateDetectionService duplicateService;
+  final NotificationService notificationService;
 
   ReportController({
     required this.aiService,
     required this.locationService,
     required this.speechService,
     required this.issuesRepository,
+    required this.duplicateService,
+    required this.notificationService,
   }) : super(const ReportState());
 
   Future<void> captureImage(ImageSource source) async {
@@ -208,7 +222,12 @@ class ReportController extends StateNotifier<ReportState> {
         slaDeadline: DateTime.now().add(Duration(hours: slaHours)),
       );
 
-      final saved = await issuesRepository.createIssue(newIssue);
+      final saved = await issuesRepository.processNewIssueWithClustering(
+        newIssue,
+        duplicateService,
+        notificationService,
+      );
+
       state = state.copyWith(
         isSubmitting: false,
         submittedIssue: saved,
@@ -234,5 +253,7 @@ final reportControllerProvider = StateNotifierProvider<ReportController, ReportS
     locationService: ref.watch(locationServiceProvider),
     speechService: ref.watch(speechServiceProvider),
     issuesRepository: ref.watch(issuesRepositoryProvider),
+    duplicateService: ref.watch(duplicateDetectionServiceProvider),
+    notificationService: ref.watch(notificationServiceProvider),
   );
 });

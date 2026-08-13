@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../auth/domain/app_user.dart';
@@ -73,26 +74,36 @@ class ProfileScreen extends ConsumerWidget {
             Card(
               child: Column(
                 children: [
+                  if (isDeptAdmin) ...[
+                    ListTile(
+                      leading: const Icon(Icons.dashboard_outlined, color: AppColors.nagpurOrange),
+                      title: const Text('Department Admin Dashboard'),
+                      subtitle: const Text('Manage SLA alerts, ticket queue & status transitions'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/admin'),
+                    ),
+                    const Divider(height: 1, color: Color(0xFF334155)),
+                  ],
                   ListTile(
-                    leading: const Icon(Icons.history, color: AppColors.nagpurOrange),
-                    title: const Text('My Reported Issues Timeline'),
-                    subtitle: const Text('Track active and resolved complaints'),
+                    leading: const Icon(Icons.verified_outlined, color: AppColors.resolvedStatus),
+                    title: const Text('Public Transparency Feed'),
+                    subtitle: const Text('View verified before/after resolutions'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () {},
+                    onTap: () => context.push('/public-feed'),
+                  ),
+                  const Divider(height: 1, color: Color(0xFF334155)),
+                  ListTile(
+                    leading: const Icon(Icons.engineering_outlined, color: AppColors.inProgressStatus),
+                    title: const Text('Public Active Work Layer'),
+                    subtitle: const Text('Track ongoing municipal repair work sites'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/active-work'),
                   ),
                   const Divider(height: 1, color: Color(0xFF334155)),
                   ListTile(
                     leading: const Icon(Icons.badge_outlined, color: AppColors.nagpurOrange),
                     title: const Text('My Badges & Rewards'),
                     subtitle: Text('${user?.badges.length ?? 2} badges unlocked'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {},
-                  ),
-                  const Divider(height: 1, color: Color(0xFF334155)),
-                  ListTile(
-                    leading: const Icon(Icons.notifications_active_outlined, color: AppColors.nagpurOrange),
-                    title: const Text('Notification Preferences'),
-                    subtitle: const Text('FCM alerts for status changes & red alerts'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {},
                   ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/app_user.dart';
@@ -15,13 +16,16 @@ class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth? _customAuth;
   final FirebaseFirestore? _customFirestore;
 
+  final StreamController<AppUser?> _userController = StreamController<AppUser?>.broadcast();
   AppUser? _cachedMockUser;
 
   FirebaseAuthRepository({
     FirebaseAuth? firebaseAuth,
     FirebaseFirestore? firestore,
   })  : _customAuth = firebaseAuth,
-        _customFirestore = firestore;
+        _customFirestore = firestore {
+    _initStream();
+  }
 
   FirebaseAuth? get _auth {
     if (_customAuth != null) return _customAuth;
@@ -41,38 +45,51 @@ class FirebaseAuthRepository implements AuthRepository {
     }
   }
 
-  @override
-  Stream<AppUser?> get authStateChanges {
+  void _initStream() {
     final auth = _auth;
-    if (auth == null) {
-      return Stream.value(_cachedMockUser);
-    }
-    try {
-      return auth.authStateChanges().asyncMap((user) async {
-        if (user == null) return _cachedMockUser;
-        final db = _db;
-        if (db != null) {
-          final doc = await db.collection('users').doc(user.uid).get();
-          if (doc.exists && doc.data() != null) {
-            return AppUser.fromMap(doc.data()!, doc.id);
+    if (auth != null) {
+      auth.authStateChanges().listen((user) async {
+        if (user != null) {
+          final db = _db;
+          if (db != null) {
+            try {
+              final doc = await db.collection('users').doc(user.uid).get();
+              if (doc.exists && doc.data() != null) {
+                _cachedMockUser = AppUser.fromMap(doc.data()!, doc.id);
+                _userController.add(_cachedMockUser);
+                return;
+              }
+            } catch (_) {}
           }
+          _cachedMockUser = AppUser(
+            uid: user.uid,
+            email: user.email ?? '',
+            phoneNumber: user.phoneNumber ?? '',
+            displayName: user.displayName ?? 'Nagpur Resident',
+            role: UserRole.citizen,
+            createdAt: DateTime.now(),
+          );
+          _userController.add(_cachedMockUser);
+        } else if (_cachedMockUser == null) {
+          _userController.add(null);
         }
-        return AppUser(
-          uid: user.uid,
-          email: user.email ?? '',
-          phoneNumber: user.phoneNumber ?? '',
-          displayName: user.displayName ?? 'Nagpur Resident',
-          role: UserRole.citizen,
-          createdAt: DateTime.now(),
-        );
       });
-    } catch (_) {
-      return Stream.value(_cachedMockUser);
     }
   }
 
   @override
+  Stream<AppUser?> get authStateChanges async* {
+    yield _cachedMockUser;
+    yield* _userController.stream;
+  }
+
+  @override
   AppUser? get currentUser => _cachedMockUser;
+
+  void _notifyUser(AppUser? user) {
+    _cachedMockUser = user;
+    _userController.add(user);
+  }
 
   @override
   Future<AppUser> signInWithEmailAndPassword(String email, String password) async {
@@ -101,12 +118,11 @@ class FirebaseAuthRepository implements AuthRepository {
           );
           await db.collection('users').doc(user.uid).set(appUser.toMap());
         }
-        _cachedMockUser = appUser;
+        _notifyUser(appUser);
         return appUser;
       } catch (_) {}
     }
 
-    // Fallback mock sign in
     final mockUser = AppUser(
       uid: 'mock_user_${DateTime.now().millisecondsSinceEpoch}',
       email: email,
@@ -117,7 +133,7 @@ class FirebaseAuthRepository implements AuthRepository {
       badges: ['Pothole Hunter', 'Verified Citizen'],
       createdAt: DateTime.now(),
     );
-    _cachedMockUser = mockUser;
+    _notifyUser(mockUser);
     return mockUser;
   }
 
@@ -143,12 +159,11 @@ class FirebaseAuthRepository implements AuthRepository {
           createdAt: DateTime.now(),
         );
         await db.collection('users').doc(user.uid).set(appUser.toMap());
-        _cachedMockUser = appUser;
+        _notifyUser(appUser);
         return appUser;
       } catch (_) {}
     }
 
-    // Mock department admin
     final mockAdmin = AppUser(
       uid: 'admin_${departmentId.toLowerCase()}',
       email: email,
@@ -158,7 +173,7 @@ class FirebaseAuthRepository implements AuthRepository {
       departmentId: departmentId,
       createdAt: DateTime.now(),
     );
-    _cachedMockUser = mockAdmin;
+    _notifyUser(mockAdmin);
     return mockAdmin;
   }
 
@@ -168,13 +183,13 @@ class FirebaseAuthRepository implements AuthRepository {
       uid: 'citizen_phone_${phoneNumber.replaceAll(RegExp(r'\D'), '')}',
       email: '${phoneNumber.replaceAll(RegExp(r'\D'), '')}@nagpur.gov.in',
       phoneNumber: phoneNumber,
-      displayName: 'Citizen ${phoneNumber.substring(phoneNumber.length - 4)}',
+      displayName: 'Citizen ${phoneNumber.length >= 4 ? phoneNumber.substring(phoneNumber.length - 4) : "User"}',
       role: UserRole.citizen,
       reputationPoints: 45,
       badges: ['Active Citizen'],
       createdAt: DateTime.now(),
     );
-    _cachedMockUser = mockUser;
+    _notifyUser(mockUser);
     return mockUser;
   }
 
@@ -186,6 +201,6 @@ class FirebaseAuthRepository implements AuthRepository {
         await auth.signOut();
       } catch (_) {}
     }
-    _cachedMockUser = null;
+    _notifyUser(null);
   }
 }

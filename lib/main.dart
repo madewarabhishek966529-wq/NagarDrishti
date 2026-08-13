@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 import 'src/core/router/app_router.dart';
 import 'src/core/theme/app_theme.dart';
@@ -9,11 +10,13 @@ import 'src/core/constants/app_constants.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Try initializing Firebase with standard error catch for local/offline dev
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('🔥 Firebase successfully initialized with project: nagardrishti-facec');
   } catch (e) {
-    debugPrint('Firebase initial setup note: $e (App running with mock auth fallback)');
+    debugPrint('Firebase initialization note: $e (App running with mock auth fallback)');
   }
 
   runApp(

@@ -28,28 +28,48 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       context: context,
       backgroundColor: AppColors.darkSurface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppColors.nagpurOrange),
-              title: const Text('Capture with Camera'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ref.read(reportControllerProvider.notifier).captureImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: AppColors.nagpurOrange),
-              title: const Text('Select from Gallery'),
-              onTap: () {
-                Navigator.pop(ctx);
-                ref.read(reportControllerProvider.notifier).captureImage(ImageSource.gallery);
-              },
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.nagpurOrange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: AppColors.nagpurOrange),
+                ),
+                title: const Text('Capture with Camera', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Instantly scan civic issue with Gemini Vision AI'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(reportControllerProvider.notifier).captureImage(ImageSource.camera);
+                },
+              ),
+              const Divider(height: 1, color: AppColors.darkCardBorder),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.nagpurOrange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: AppColors.nagpurOrange),
+                ),
+                title: const Text('Select from Gallery', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Upload existing photo from device storage'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(reportControllerProvider.notifier).captureImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -59,16 +79,15 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   Widget build(BuildContext context) {
     final reportState = ref.watch(reportControllerProvider);
     final user = ref.watch(authStateProvider).value;
-
     final isSubmitting = reportState.isSubmitting;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New AI Civic Report'),
+        title: const Text('New AI Civic Report', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: Icon(
-              reportState.isListeningVoice ? Icons.mic : Icons.mic_none_outlined,
+              reportState.isListeningVoice ? Icons.mic_rounded : Icons.mic_none_rounded,
               color: reportState.isListeningVoice ? AppColors.redAlert : AppColors.nagpurOrange,
             ),
             onPressed: () {
@@ -76,7 +95,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: () {
               _descriptionController.clear();
               ref.read(reportControllerProvider.notifier).reset();
@@ -89,20 +108,27 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Image Capture Container
+            // Hero Photo Scanner Container
             GestureDetector(
               onTap: () => _showImageSourcePicker(context),
               child: Container(
-                height: 210,
+                height: 220,
                 decoration: BoxDecoration(
                   color: AppColors.darkSurface,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: reportState.aiResult != null
                         ? AppColors.resolvedStatus
                         : AppColors.nagpurOrange,
                     width: 2,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.nagpurOrange.withValues(alpha: 0.15),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: reportState.isAnalyzingImage
                     ? Column(
@@ -112,18 +138,18 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                           SizedBox(height: 16),
                           Text(
                             'Gemini Vision AI Scanning Photo...',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Classifying issue type, severity & department routing',
+                            'Extracting category, severity & department routing',
                             style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark),
                           ),
                         ],
                       )
                     : reportState.imageBytes != null
                         ? ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(18),
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
@@ -137,34 +163,41 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                                     left: 0,
                                     right: 0,
                                     child: Container(
-                                      padding: const EdgeInsets.all(12),
+                                      padding: const EdgeInsets.all(14),
                                       color: Colors.black87,
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
-                                              const Icon(Icons.auto_awesome, color: Colors.amberAccent, size: 16),
+                                              const Icon(Icons.auto_awesome, color: Colors.amber, size: 18),
                                               const SizedBox(width: 6),
                                               Text(
                                                 'AI Category: ${reportState.aiResult!.category}',
                                                 style: const TextStyle(
-                                                    fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                                                    fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
                                               ),
                                               const Spacer(),
-                                              Text(
-                                                '${(reportState.aiResult!.confidenceScore * 100).toInt()}% Match',
-                                                style: const TextStyle(
-                                                    fontSize: 11,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: AppColors.resolvedStatus),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.resolvedStatus.withValues(alpha: 0.2),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  '${(reportState.aiResult!.confidenceScore * 100).toInt()}% Match',
+                                                  style: const TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: AppColors.resolvedStatus),
+                                                ),
                                               ),
                                             ],
                                           ),
-                                          const SizedBox(height: 2),
+                                          const SizedBox(height: 4),
                                           Text(
                                             'Severity: ${reportState.aiResult!.severity.toValue().toUpperCase()}',
-                                            style: const TextStyle(fontSize: 11, color: AppColors.nagpurOrange),
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.nagpurOrange),
                                           ),
                                         ],
                                       ),
@@ -175,16 +208,23 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                           )
                         : Column(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.camera_alt_outlined, size: 54, color: AppColors.nagpurOrange),
-                              SizedBox(height: 12),
-                              Text(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: AppColors.nagpurOrange.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.add_a_photo_rounded, size: 44, color: AppColors.nagpurOrange),
+                              ),
+                              const SizedBox(height: 14),
+                              const Text(
                                 'Tap to Capture Photo with Gemini AI',
                                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Auto GPS location & instant issue classification',
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Auto GPS location & instant AI classification',
                                 style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark),
                               ),
                             ],
@@ -196,19 +236,19 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             // Location & Ward Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.my_location, color: AppColors.nagpurOrange, size: 18),
-                        const SizedBox(width: 8),
+                        const Icon(Icons.my_location_rounded, color: AppColors.nagpurOrange, size: 20),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             reportState.location != null
                                 ? 'GPS: ${reportState.location!.address}'
-                                : 'Location (Auto GPS)',
+                                : 'Auto GPS Location Resolution',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -216,20 +256,20 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                         ),
                         if (reportState.isFetchingLocation)
                           const SizedBox(
-                            width: 14,
-                            height: 14,
+                            width: 16,
+                            height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.nagpurOrange),
                           )
                         else
                           IconButton(
-                            icon: const Icon(Icons.gps_fixed, size: 18, color: AppColors.nagpurOrange),
+                            icon: const Icon(Icons.gps_fixed_rounded, size: 20, color: AppColors.nagpurOrange),
                             onPressed: () {
                               ref.read(reportControllerProvider.notifier).fetchLocation();
                             },
                           ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       initialValue: reportState.selectedWard,
                       decoration: const InputDecoration(
@@ -237,7 +277,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                       ),
                       dropdownColor: AppColors.darkSurface,
                       items: AppConstants.nagpurWards
-                          .map((w) => DropdownMenuItem(value: w, child: Text(w)))
+                          .map((w) => DropdownMenuItem(value: w, child: Text(w, style: const TextStyle(fontSize: 13))))
                           .toList(),
                       onChanged: (val) {
                         if (val != null) {
@@ -251,16 +291,16 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Issue Category Dropdown
+            // Category Selector
             DropdownButtonFormField<String>(
               initialValue: reportState.selectedCategory,
               decoration: const InputDecoration(
                 labelText: 'Issue Category',
-                prefixIcon: Icon(Icons.category_outlined, color: AppColors.textSecondaryDark),
+                prefixIcon: Icon(Icons.category_rounded, color: AppColors.textSecondaryDark),
               ),
               dropdownColor: AppColors.darkSurface,
               items: AppConstants.categoryToDepartmentMap.keys
-                  .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+                  .map((cat) => DropdownMenuItem(value: cat, child: Text(cat, style: const TextStyle(fontSize: 13))))
                   .toList(),
               onChanged: (val) {
                 if (val != null) {
@@ -268,19 +308,19 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                 }
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
-            // Routed Department & SLA Preview
+            // Routed Department Preview
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.darkSurface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF334155)),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.darkCardBorder),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.alt_route, color: AppColors.nagpurOrange, size: 18),
+                  const Icon(Icons.alt_route_rounded, color: AppColors.nagpurOrange, size: 20),
                   const SizedBox(width: 10),
                   const Text('Routed Dept:', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark)),
                   const SizedBox(width: 6),
@@ -289,23 +329,30 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
                   ),
                   const Spacer(),
-                  Text(
-                    'SLA: ${AppConstants.categorySlaHours[reportState.selectedCategory] ?? 48}h Target',
-                    style: const TextStyle(fontSize: 11, color: AppColors.nagpurOrange, fontWeight: FontWeight.bold),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.nagpurOrange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'SLA: ${AppConstants.categorySlaHours[reportState.selectedCategory] ?? 48}h Target',
+                      style: const TextStyle(fontSize: 11, color: AppColors.nagpurOrange, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // Voice Note / Custom Description
+            // Description / Voice Note input
             TextFormField(
               controller: _descriptionController,
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: reportState.voiceDescription.isNotEmpty
                     ? 'Voice Note: ${reportState.voiceDescription}'
-                    : 'Add extra details or tap top mic icon for voice note...',
+                    : 'Add extra landmark details or tap top mic icon for voice note...',
                 labelText: 'Description / Voice Note',
               ),
             ),
@@ -332,8 +379,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     },
               icon: isSubmitting
                   ? const SizedBox(
-                      width: 18,
-                      height: 18,
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
                   : const Icon(Icons.send_rounded),
@@ -345,7 +392,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                 backgroundColor: AppColors.nagpurOrange,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 4,
               ),
             ),
           ],
