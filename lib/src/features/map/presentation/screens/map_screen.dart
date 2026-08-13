@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import '../../../../core/constants/app_colors.dart';
+import '../../../report/data/location_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -12,7 +13,10 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
+  final LocationService _locationService = DeviceLocationService();
   String _selectedFilter = 'All Issues';
+  ll.LatLng? _userLocation;
+  bool _isLocating = false;
 
   final List<String> _filters = [
     'All Issues',
@@ -24,6 +28,40 @@ class _MapScreenState extends State<MapScreen> {
   ];
 
   static const ll.LatLng _nagpurCenter = ll.LatLng(21.1458, 79.0882);
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRealUserLocation(autoCenter: true);
+  }
+
+  Future<void> _fetchRealUserLocation({bool autoCenter = false}) async {
+    setState(() => _isLocating = true);
+    try {
+      final loc = await _locationService.getCurrentLocation();
+      final userLatLng = ll.LatLng(loc.latitude, loc.longitude);
+      setState(() {
+        _userLocation = userLatLng;
+        _isLocating = false;
+      });
+
+      if (autoCenter) {
+        _mapController.move(userLatLng, 15.0);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('📍 Live GPS Centered: ${loc.address}'),
+            backgroundColor: AppColors.nagpurOrange,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (_) {
+      setState(() => _isLocating = false);
+    }
+  }
 
   final List<Map<String, dynamic>> _allMapIssues = [
     {
@@ -105,10 +143,10 @@ class _MapScreenState extends State<MapScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.my_location_rounded, color: AppColors.nagpurOrange),
-            onPressed: () {
-              _mapController.move(_nagpurCenter, 13.5);
-            },
+            icon: _isLocating
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.nagpurOrange))
+                : const Icon(Icons.my_location_rounded, color: AppColors.nagpurOrange),
+            onPressed: () => _fetchRealUserLocation(autoCenter: true),
           ),
         ],
       ),
@@ -155,62 +193,101 @@ class _MapScreenState extends State<MapScreen> {
 
               // Real Interactive Marker Layer
               MarkerLayer(
-                markers: _filteredIssues.map((issue) {
-                  final Color markerColor = issue['color'] as Color;
-                  return Marker(
-                    point: issue['location'] as ll.LatLng,
-                    width: 140,
-                    height: 60,
-                    alignment: Alignment.topCenter,
-                    child: GestureDetector(
-                      onTap: () => _showIssueDetailModal(context, issue),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                markers: [
+                  if (_userLocation != null)
+                    Marker(
+                      point: _userLocation!,
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
-                              color: markerColor,
-                              borderRadius: BorderRadius.circular(10),
+                              shape: BoxShape.circle,
+                              color: Colors.blueAccent.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          Container(
+                            width: 20,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.blueAccent,
+                              border: Border.all(color: Colors.white, width: 3),
                               boxShadow: [
                                 BoxShadow(
-                                  color: markerColor.withValues(alpha: 0.4),
+                                  color: Colors.blueAccent.withValues(alpha: 0.6),
                                   blurRadius: 10,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (issue['isRedAlert'] == true) ...[
-                                  const Icon(Icons.flash_on_rounded, color: Colors.white, size: 12),
-                                  const SizedBox(width: 2),
-                                ],
-                                Flexible(
-                                  child: Text(
-                                    '${issue['ward'].toString().split("-").last} (${issue['reports']})',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                  spreadRadius: 2,
                                 ),
                               ],
                             ),
                           ),
-                          Icon(Icons.arrow_drop_down_rounded, color: markerColor, size: 22),
                         ],
                       ),
                     ),
-                  );
-                }).toList(),
+                  ..._filteredIssues.map((issue) {
+                    final Color markerColor = issue['color'] as Color;
+                    return Marker(
+                      point: issue['location'] as ll.LatLng,
+                      width: 140,
+                      height: 60,
+                      alignment: Alignment.topCenter,
+                      child: GestureDetector(
+                        onTap: () => _showIssueDetailModal(context, issue),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: markerColor,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: markerColor.withValues(alpha: 0.4),
+                                    blurRadius: 10,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (issue['isRedAlert'] == true) ...[
+                                    const Icon(Icons.flash_on_rounded, color: Colors.white, size: 12),
+                                    const SizedBox(width: 2),
+                                  ],
+                                  Flexible(
+                                    child: Text(
+                                      '${issue['ward'].toString().split("-").last} (${issue['reports']})',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.arrow_drop_down_rounded, color: markerColor, size: 22),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
               ),
             ],
           ),
+
 
           // Top Filter Chips Bar
           Positioned(

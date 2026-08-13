@@ -26,6 +26,10 @@ class DeviceLocationService implements LocationService {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          return await _buildLocationResult(lastPos);
+        }
         return _fallbackLocation('Location services disabled');
       }
 
@@ -33,51 +37,74 @@ class DeviceLocationService implements LocationService {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
+          final lastPos = await Geolocator.getLastKnownPosition();
+          if (lastPos != null) {
+            return await _buildLocationResult(lastPos);
+          }
           return _fallbackLocation('Location permission denied');
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          return await _buildLocationResult(lastPos);
+        }
         return _fallbackLocation('Location permission permanently denied');
       }
 
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 8),
-      );
-
-      String address = 'Nagpur, Maharashtra';
-      String ward = AppConstants.nagpurWards.first;
-
+      Position? position;
       try {
-        List<Placemark> placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 12),
         );
-        if (placemarks.isNotEmpty) {
-          final place = placemarks.first;
-          address = '${place.street ?? place.subLocality ?? "Road"}, ${place.locality ?? "Nagpur"}';
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
 
-          final locLower = (place.subLocality ?? place.name ?? '').toLowerCase();
-          for (final w in AppConstants.nagpurWards) {
-            final wardNameOnly = w.split('-').last.trim().toLowerCase();
-            if (locLower.contains(wardNameOnly)) {
-              ward = w;
-              break;
-            }
-          }
-        }
-      } catch (_) {}
+      if (position != null) {
+        return await _buildLocationResult(position);
+      }
 
-      return LocationResult(
-        latitude: position.latitude,
-        longitude: position.longitude,
-        address: address,
-        ward: ward,
-      );
+      return _fallbackLocation('Nagpur Central');
     } catch (_) {
       return _fallbackLocation('Nagpur Central');
     }
+  }
+
+  Future<LocationResult> _buildLocationResult(Position position) async {
+    String address = 'Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}';
+    String ward = AppConstants.nagpurWards.first;
+
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        final street = place.street ?? place.subLocality ?? place.name;
+        final locality = place.locality ?? place.subAdministrativeArea ?? 'Nagpur';
+        address = '${street != null && street.isNotEmpty ? "$street, " : ""}$locality';
+
+        final locLower = '${place.subLocality} ${place.name} ${place.thoroughfare}'.toLowerCase();
+        for (final w in AppConstants.nagpurWards) {
+          final wardNameOnly = w.split('-').last.trim().toLowerCase();
+          if (locLower.contains(wardNameOnly)) {
+            ward = w;
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+
+    return LocationResult(
+      latitude: position.latitude,
+      longitude: position.longitude,
+      address: address,
+      ward: ward,
+    );
   }
 
   LocationResult _fallbackLocation(String note) {
@@ -89,3 +116,4 @@ class DeviceLocationService implements LocationService {
     );
   }
 }
+

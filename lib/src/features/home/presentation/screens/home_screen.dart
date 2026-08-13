@@ -5,6 +5,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../auth/domain/app_user.dart';
+import '../../../weather/data/weather_repository.dart';
+import '../../../weather/domain/weather_cache_model.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -13,6 +15,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).value;
     final isDeptAdmin = user?.role == UserRole.deptAdmin;
+    final weatherRepo = ref.watch(weatherRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -54,64 +57,115 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Predictive Rain Warning Banner
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.4), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withValues(alpha: 0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
+            // Live Real-Time Open-Meteo Weather Card (Zero API Key Needed)
+            FutureBuilder<WeatherCacheModel>(
+              future: weatherRepo.fetchRealLiveWeather(),
+              builder: (context, snapshot) {
+                final weather = snapshot.data;
+                final isLoading = snapshot.connectionState == ConnectionState.waiting;
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: const Icon(Icons.thunderstorm_rounded, color: Colors.lightBlueAccent, size: 30),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.4), width: 1.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withValues(alpha: 0.15),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          '⚡ Rain Warning — Ward 2 Dharampeth',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
+                  child: isLoading
+                      ? Row(
+                          children: const [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.lightBlueAccent),
+                            ),
+                            SizedBox(width: 14),
+                            Text(
+                              'Fetching Live Weather via Open-Meteo API...',
+                              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                weather?.heavyRainAlert == true ? Icons.thunderstorm_rounded : Icons.cloud_queue_rounded,
+                                color: Colors.lightBlueAccent,
+                                size: 30,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          '📍 ${weather?.wardId ?? "Chhatrapati Square, Nagpur"}',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.lightBlueAccent,
+                                            fontSize: 13,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blueAccent.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          '${weather?.tempCelsius.toStringAsFixed(1)}°C',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${weather?.condition} • ${weather?.forecastSummary}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondaryDark,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          '45mm rainfall forecast in 24h. Waterlogging SLA automatically escalated.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondaryDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+
+                );
+              },
             ),
             const SizedBox(height: 20),
+
 
             // User Citizen Card
             Card(
