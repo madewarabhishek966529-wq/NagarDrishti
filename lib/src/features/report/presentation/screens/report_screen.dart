@@ -345,6 +345,45 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             ),
             const SizedBox(height: 16),
 
+            // SOS Emergency Hazard Card
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: reportState.isSosEmergency
+                    ? AppColors.redAlert.withValues(alpha: 0.15)
+                    : AppColors.darkSurface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: reportState.isSosEmergency ? AppColors.redAlert : AppColors.darkCardBorder,
+                  width: reportState.isSosEmergency ? 2 : 1,
+                ),
+              ),
+              child: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                activeTrackColor: AppColors.redAlert,
+                activeThumbColor: Colors.white,
+                title: Row(
+                  children: const [
+                    Icon(Icons.warning_amber_rounded, color: AppColors.redAlert),
+                    SizedBox(width: 8),
+                    Text(
+                      '🚨 SOS Critical Hazard',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.redAlert),
+                    ),
+                  ],
+                ),
+                subtitle: const Text(
+                  'Immediate 4-hour SLA emergency escalation for severe public risks (open manholes, live wires)',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondaryDark),
+                ),
+                value: reportState.isSosEmergency,
+                onChanged: (_) {
+                  ref.read(reportControllerProvider.notifier).toggleSosEmergency();
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Description / Voice Note input
             TextFormField(
               controller: _descriptionController,
@@ -385,17 +424,20 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                     )
                   : const Icon(Icons.send_rounded),
               label: Text(
-                isSubmitting ? 'Writing to Firestore...' : 'Submit Official Report',
+                isSubmitting
+                    ? 'Writing to Firestore...'
+                    : (reportState.isSosEmergency ? '⚡ Submit Emergency SOS Alert' : 'Submit Official Report'),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.nagpurOrange,
+                backgroundColor: reportState.isSosEmergency ? AppColors.redAlert : AppColors.nagpurOrange,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 elevation: 4,
               ),
             ),
+
           ],
         ),
       ),

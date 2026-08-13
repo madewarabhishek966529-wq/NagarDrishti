@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/app_language_provider.dart';
 import '../../../home/presentation/screens/home_screen.dart';
 import '../../../map/presentation/screens/map_screen.dart';
 import '../../../report/presentation/screens/report_screen.dart';
 import '../../../leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
-class MainShellScreen extends StatefulWidget {
+class MainShellScreen extends ConsumerStatefulWidget {
   const MainShellScreen({super.key});
 
   @override
-  State<MainShellScreen> createState() => _MainShellScreenState();
+  ConsumerState<MainShellScreen> createState() => _MainShellScreenState();
 }
 
-class _MainShellScreenState extends State<MainShellScreen> {
+class _MainShellScreenState extends ConsumerState<MainShellScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
@@ -26,7 +28,64 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentLang = ref.watch(appLanguageProvider);
+
     return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 48,
+        backgroundColor: AppColors.darkBackground,
+        elevation: 0,
+        title: Row(
+          children: [
+            const Icon(Icons.location_city_rounded, color: AppColors.nagpurOrange, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              AppStrings.tr('appName', currentLang),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ],
+        ),
+        actions: [
+          PopupMenuButton<AppLanguage>(
+            icon: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.darkSurface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.darkCardBorder),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.language_rounded, size: 14, color: AppColors.nagpurOrange),
+                  const SizedBox(width: 4),
+                  Text(
+                    currentLang.label,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            color: AppColors.darkSurface,
+            onSelected: (lang) {
+              ref.read(appLanguageProvider.notifier).setLanguage(lang);
+            },
+            itemBuilder: (ctx) => AppLanguage.values
+                .map((lang) => PopupMenuItem(
+                      value: lang,
+                      child: Text(lang.label, style: const TextStyle(fontSize: 13, color: Colors.white)),
+                    ))
+                .toList(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_active_rounded, color: AppColors.nagpurOrange, size: 20),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('🔔 FCM Notification Tray: 2 new updates in Ward 2 Dharampeth')),
+              );
+            },
+          ),
+        ],
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: _screens,
@@ -118,3 +177,4 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 }
+

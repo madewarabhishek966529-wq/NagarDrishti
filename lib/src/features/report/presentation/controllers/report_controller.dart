@@ -45,6 +45,7 @@ class ReportState {
   final String selectedWard;
   final String voiceDescription;
   final bool isListeningVoice;
+  final bool isSosEmergency;
   final bool isSubmitting;
   final IssueModel? submittedIssue;
   final String? errorMessage;
@@ -60,6 +61,7 @@ class ReportState {
     this.selectedWard = 'Ward 1 - Laxmi Nagar',
     this.voiceDescription = '',
     this.isListeningVoice = false,
+    this.isSosEmergency = false,
     this.isSubmitting = false,
     this.submittedIssue,
     this.errorMessage,
@@ -76,6 +78,7 @@ class ReportState {
     String? selectedWard,
     String? voiceDescription,
     bool? isListeningVoice,
+    bool? isSosEmergency,
     bool? isSubmitting,
     IssueModel? submittedIssue,
     String? errorMessage,
@@ -91,6 +94,7 @@ class ReportState {
       selectedWard: selectedWard ?? this.selectedWard,
       voiceDescription: voiceDescription ?? this.voiceDescription,
       isListeningVoice: isListeningVoice ?? this.isListeningVoice,
+      isSosEmergency: isSosEmergency ?? this.isSosEmergency,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       submittedIssue: submittedIssue ?? this.submittedIssue,
       errorMessage: errorMessage,
@@ -114,6 +118,10 @@ class ReportController extends StateNotifier<ReportState> {
     required this.duplicateService,
     required this.notificationService,
   }) : super(const ReportState());
+
+  void toggleSosEmergency() {
+    state = state.copyWith(isSosEmergency: !state.isSosEmergency);
+  }
 
   Future<void> captureImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -192,7 +200,7 @@ class ReportController extends StateNotifier<ReportState> {
       final trackingId = 'NAG-$trackingNum';
 
       final deptCode = AppConstants.categoryToDepartmentMap[state.selectedCategory] ?? 'DEPT_ROADS';
-      final slaHours = AppConstants.categorySlaHours[state.selectedCategory] ?? 48;
+      final slaHours = state.isSosEmergency ? 4 : (AppConstants.categorySlaHours[state.selectedCategory] ?? 48);
 
       final description = customDescription.isNotEmpty
           ? customDescription
@@ -203,11 +211,11 @@ class ReportController extends StateNotifier<ReportState> {
       final newIssue = IssueModel(
         id: issueId,
         trackingId: trackingId,
-        title: '${state.selectedCategory} near ${state.location?.address.split(',').first ?? "Road"}',
+        title: '${state.isSosEmergency ? "[SOS EMERGENCY] " : ""}${state.selectedCategory} near ${state.location?.address.split(',').first ?? "Road"}',
         description: description,
         category: state.selectedCategory,
         subCategory: state.aiResult?.subCategory ?? '',
-        severity: state.aiResult?.severity ?? IssueSeverity.medium,
+        severity: state.isSosEmergency ? IssueSeverity.critical : (state.aiResult?.severity ?? IssueSeverity.medium),
         confidenceScore: state.aiResult?.confidenceScore ?? 0.88,
         imageUrl: state.imagePath ?? 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7',
         latitude: state.location?.latitude ?? 21.1458,
@@ -215,6 +223,8 @@ class ReportController extends StateNotifier<ReportState> {
         address: state.location?.address ?? 'Wardha Road, Nagpur',
         ward: state.selectedWard,
         status: IssueStatus.reported,
+        redAlert: state.isSosEmergency,
+        reportCount: state.isSosEmergency ? 10 : 1,
         createdBy: userId,
         assignedDepartmentId: deptCode,
         createdAt: DateTime.now(),
@@ -241,6 +251,7 @@ class ReportController extends StateNotifier<ReportState> {
       return null;
     }
   }
+
 
   void reset() {
     state = const ReportState();

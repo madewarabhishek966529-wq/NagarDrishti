@@ -70,6 +70,14 @@ class IssueModel {
   final double confidenceScore;
   final String imageUrl;
   final String? afterImageUrl;
+  final double? fixQualityScore;
+  final bool isVerifiedFixed;
+  final String? verificationSummary;
+  final int reopenCount;
+  final int? citizenRating;
+  final String? citizenFeedback;
+  final double? estimatedCost;
+  final String? assignedWorker;
   final double latitude;
   final double longitude;
   final String address;
@@ -95,6 +103,14 @@ class IssueModel {
     required this.confidenceScore,
     required this.imageUrl,
     this.afterImageUrl,
+    this.fixQualityScore,
+    this.isVerifiedFixed = false,
+    this.verificationSummary,
+    this.reopenCount = 0,
+    this.citizenRating,
+    this.citizenFeedback,
+    this.estimatedCost,
+    this.assignedWorker,
     required this.latitude,
     required this.longitude,
     required this.address,
@@ -122,6 +138,14 @@ class IssueModel {
       'confidenceScore': confidenceScore,
       'imageUrl': imageUrl,
       'afterImageUrl': afterImageUrl,
+      'fixQualityScore': fixQualityScore,
+      'isVerifiedFixed': isVerifiedFixed,
+      'verificationSummary': verificationSummary,
+      'reopenCount': reopenCount,
+      'citizenRating': citizenRating,
+      'citizenFeedback': citizenFeedback,
+      'estimatedCost': estimatedCost,
+      'assignedWorker': assignedWorker,
       'latitude': latitude,
       'longitude': longitude,
       'address': address,
@@ -150,6 +174,14 @@ class IssueModel {
       confidenceScore: (map['confidenceScore'] as num?)?.toDouble() ?? 0.85,
       imageUrl: map['imageUrl'] as String? ?? '',
       afterImageUrl: map['afterImageUrl'] as String?,
+      fixQualityScore: (map['fixQualityScore'] as num?)?.toDouble(),
+      isVerifiedFixed: map['isVerifiedFixed'] as bool? ?? false,
+      verificationSummary: map['verificationSummary'] as String?,
+      reopenCount: (map['reopenCount'] as num?)?.toInt() ?? 0,
+      citizenRating: (map['citizenRating'] as num?)?.toInt(),
+      citizenFeedback: map['citizenFeedback'] as String?,
+      estimatedCost: (map['estimatedCost'] as num?)?.toDouble(),
+      assignedWorker: map['assignedWorker'] as String?,
       latitude: (map['latitude'] as num?)?.toDouble() ?? 21.1458,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 79.0882,
       address: map['address'] as String? ?? 'Nagpur, Maharashtra',
@@ -173,3 +205,4 @@ class IssueModel {
     );
   }
 }
+

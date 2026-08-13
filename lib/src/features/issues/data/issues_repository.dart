@@ -14,6 +14,22 @@ abstract class IssuesRepository {
   Future<List<IssueModel>> fetchRedAlertIssues();
   Future<List<IssueModel>> fetchIssuesByWard(String ward);
   Future<IssueModel?> getIssueById(String id);
+  Future<void> resolveIssueWithProof({
+    required String issueId,
+    required String afterImageUrl,
+    required double fixQualityScore,
+    required bool isVerifiedFixed,
+    required String verificationSummary,
+  });
+  Future<void> reopenIssue({
+    required String issueId,
+    required String citizenFeedback,
+  });
+  Future<void> rateResolvedIssue({
+    required String issueId,
+    required int rating,
+    String? feedback,
+  });
 }
 
 class FirestoreIssuesRepository implements IssuesRepository {
@@ -37,15 +53,21 @@ class FirestoreIssuesRepository implements IssuesRepository {
           severity: IssueSeverity.critical,
           confidenceScore: 0.96,
           imageUrl: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7',
+          afterImageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7',
+          fixQualityScore: 0.95,
+          isVerifiedFixed: true,
+          verificationSummary: 'Gemini Vision AI: Road asphalt patch is seamless and drainage is clear.',
           latitude: 21.1458,
           longitude: 79.0882,
           address: 'Wardha Road, Dharampeth, Nagpur',
           ward: 'Ward 2 - Dharampeth',
-          status: IssueStatus.reported,
+          status: IssueStatus.resolved,
           redAlert: true,
           reportCount: 14,
           createdBy: 'user_101',
           assignedDepartmentId: 'DEPT_WATER',
+          assignedWorker: 'Ramesh Kumar (Zone 2 Team)',
+          estimatedCost: 15000,
           createdAt: DateTime.now().subtract(const Duration(minutes: 25)),
           updatedAt: DateTime.now().subtract(const Duration(minutes: 5)),
           slaDeadline: DateTime.now().add(const Duration(hours: 48)),
@@ -68,6 +90,8 @@ class FirestoreIssuesRepository implements IssuesRepository {
           reportCount: 11,
           createdBy: 'user_102',
           assignedDepartmentId: 'DEPT_ROADS',
+          assignedWorker: 'Sunil Patil (Contractor Squad)',
+          estimatedCost: 22000,
           createdAt: DateTime.now().subtract(const Duration(hours: 2)),
           updatedAt: DateTime.now().subtract(const Duration(minutes: 20)),
           slaDeadline: DateTime.now().add(const Duration(hours: 120)),
@@ -221,4 +245,177 @@ class FirestoreIssuesRepository implements IssuesRepository {
       return null;
     }
   }
+
+  @override
+  Future<void> resolveIssueWithProof({
+    required String issueId,
+    required String afterImageUrl,
+    required double fixQualityScore,
+    required bool isVerifiedFixed,
+    required String verificationSummary,
+  }) async {
+    final db = _db;
+    final data = {
+      'afterImageUrl': afterImageUrl,
+      'fixQualityScore': fixQualityScore,
+      'isVerifiedFixed': isVerifiedFixed,
+      'verificationSummary': verificationSummary,
+      'status': IssueStatus.resolved.toValue(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    if (db != null) {
+      try {
+        await db.collection('issues').doc(issueId).update(data);
+      } catch (_) {}
+    }
+
+    final index = _mockIssues.indexWhere((i) => i.id == issueId || i.trackingId == issueId);
+    if (index != -1) {
+      final old = _mockIssues[index];
+      _mockIssues[index] = IssueModel(
+        id: old.id,
+        trackingId: old.trackingId,
+        title: old.title,
+        description: old.description,
+        category: old.category,
+        severity: old.severity,
+        confidenceScore: old.confidenceScore,
+        imageUrl: old.imageUrl,
+        afterImageUrl: afterImageUrl,
+        fixQualityScore: fixQualityScore,
+        isVerifiedFixed: isVerifiedFixed,
+        verificationSummary: verificationSummary,
+        latitude: old.latitude,
+        longitude: old.longitude,
+        address: old.address,
+        ward: old.ward,
+        status: IssueStatus.resolved,
+        redAlert: old.redAlert,
+        reportCount: old.reportCount,
+        createdBy: old.createdBy,
+        assignedDepartmentId: old.assignedDepartmentId,
+        assignedWorker: old.assignedWorker,
+        estimatedCost: old.estimatedCost,
+        createdAt: old.createdAt,
+        updatedAt: DateTime.now(),
+        slaDeadline: old.slaDeadline,
+      );
+    }
+  }
+
+  @override
+  Future<void> reopenIssue({
+    required String issueId,
+    required String citizenFeedback,
+  }) async {
+    final db = _db;
+    final index = _mockIssues.indexWhere((i) => i.id == issueId || i.trackingId == issueId);
+    final old = index != -1 ? _mockIssues[index] : null;
+    final reopenCount = (old?.reopenCount ?? 0) + 1;
+
+    final data = {
+      'status': IssueStatus.inProgress.toValue(),
+      'reopenCount': reopenCount,
+      'citizenFeedback': citizenFeedback,
+      'redAlert': true, // Auto escalate on re-open
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    if (db != null) {
+      try {
+        await db.collection('issues').doc(issueId).update(data);
+      } catch (_) {}
+    }
+
+    if (old != null) {
+      _mockIssues[index] = IssueModel(
+        id: old.id,
+        trackingId: old.trackingId,
+        title: old.title,
+        description: old.description,
+        category: old.category,
+        severity: IssueSeverity.critical,
+        confidenceScore: old.confidenceScore,
+        imageUrl: old.imageUrl,
+        afterImageUrl: old.afterImageUrl,
+        fixQualityScore: old.fixQualityScore,
+        isVerifiedFixed: false,
+        verificationSummary: 'Re-opened by citizen: $citizenFeedback',
+        reopenCount: reopenCount,
+        citizenFeedback: citizenFeedback,
+        latitude: old.latitude,
+        longitude: old.longitude,
+        address: old.address,
+        ward: old.ward,
+        status: IssueStatus.inProgress,
+        redAlert: true,
+        reportCount: old.reportCount,
+        createdBy: old.createdBy,
+        assignedDepartmentId: old.assignedDepartmentId,
+        assignedWorker: old.assignedWorker,
+        estimatedCost: old.estimatedCost,
+        createdAt: old.createdAt,
+        updatedAt: DateTime.now(),
+        slaDeadline: old.slaDeadline,
+      );
+    }
+  }
+
+  @override
+  Future<void> rateResolvedIssue({
+    required String issueId,
+    required int rating,
+    String? feedback,
+  }) async {
+    final db = _db;
+    final data = {
+      'citizenRating': rating,
+      'citizenFeedback': feedback ?? '',
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    if (db != null) {
+      try {
+        await db.collection('issues').doc(issueId).update(data);
+      } catch (_) {}
+    }
+
+    final index = _mockIssues.indexWhere((i) => i.id == issueId || i.trackingId == issueId);
+    if (index != -1) {
+      final old = _mockIssues[index];
+      _mockIssues[index] = IssueModel(
+        id: old.id,
+        trackingId: old.trackingId,
+        title: old.title,
+        description: old.description,
+        category: old.category,
+        severity: old.severity,
+        confidenceScore: old.confidenceScore,
+        imageUrl: old.imageUrl,
+        afterImageUrl: old.afterImageUrl,
+        fixQualityScore: old.fixQualityScore,
+        isVerifiedFixed: old.isVerifiedFixed,
+        verificationSummary: old.verificationSummary,
+        reopenCount: old.reopenCount,
+        citizenRating: rating,
+        citizenFeedback: feedback,
+        latitude: old.latitude,
+        longitude: old.longitude,
+        address: old.address,
+        ward: old.ward,
+        status: old.status,
+        redAlert: old.redAlert,
+        reportCount: old.reportCount,
+        createdBy: old.createdBy,
+        assignedDepartmentId: old.assignedDepartmentId,
+        assignedWorker: old.assignedWorker,
+        estimatedCost: old.estimatedCost,
+        createdAt: old.createdAt,
+        updatedAt: DateTime.now(),
+        slaDeadline: old.slaDeadline,
+      );
+    }
+  }
 }
+

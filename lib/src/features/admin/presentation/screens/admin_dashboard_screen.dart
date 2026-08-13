@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../report/presentation/controllers/report_controller.dart';
 import '../../../issues/domain/issue_model.dart';
+import '../../../issues/data/gemini_verification_service.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -56,13 +58,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           final redAlerts = issues.where((i) => i.redAlert).toList();
           final openCount = issues.where((i) => i.status != IssueStatus.resolved).length;
           final resolvedCount = issues.where((i) => i.status == IssueStatus.resolved).length;
+          final totalEstSpend = issues.fold<double>(0, (sum, item) => sum + (item.estimatedCost ?? 18000));
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Warning Weather Risk Banner
+                // Top Weather Warning Risk Banner
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -71,13 +74,49 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     border: Border.all(color: const Color(0xFF3B82F6), width: 1.5),
                   ),
                   child: Row(
-                    children: [
-                      const Icon(Icons.thunderstorm_rounded, color: Colors.lightBlueAccent, size: 28),
-                      const SizedBox(width: 14),
+                    children: const [
+                      Icon(Icons.thunderstorm_rounded, color: Colors.lightBlueAccent, size: 28),
+                      SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           'Weather Risk Escalation: Heavy rain forecast in Ward 2 Dharampeth. High risk for drainage tickets.',
-                          style: const TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Financial & SLA Analytics Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.darkSurface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.nagpurOrange.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Est. Budget Allocated', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryDark)),
+                            const SizedBox(height: 4),
+                            Text('₹${(totalEstSpend / 1000).toStringAsFixed(1)}k', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber)),
+                          ],
+                        ),
+                      ),
+                      Container(width: 1, height: 36, color: AppColors.darkCardBorder),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('  SLA Target Rate', style: TextStyle(fontSize: 11, color: AppColors.textSecondaryDark)),
+                            const SizedBox(height: 4),
+                            const Text('  94.2%', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.resolvedStatus)),
+                          ],
                         ),
                       ),
                     ],
@@ -98,7 +137,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   children: [
                     _buildKpiCard('Resolved', '$resolvedCount', Icons.task_alt_rounded, AppColors.resolvedStatus),
                     const SizedBox(width: 12),
-                    _buildKpiCard('SLA Overdue', '1 Ticket', Icons.alarm_off_rounded, AppColors.highSeverity),
+                    _buildKpiCard('Active Field Teams', '4 Teams', Icons.engineering_rounded, Colors.cyan),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -174,6 +213,19 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                           Text(issue.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                           const SizedBox(height: 4),
                           Text(issue.description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryDark)),
+                          if (issue.assignedWorker != null) ...[
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.person_pin_rounded, size: 14, color: AppColors.nagpurOrange),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Assigned: ${issue.assignedWorker}',
+                                  style: const TextStyle(fontSize: 11, color: AppColors.nagpurOrange, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ],
                           const Divider(height: 20, color: AppColors.darkCardBorder),
                           Row(
                             children: [
@@ -279,15 +331,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               title: const Text('Mark In Progress (Auto-creates Active Work)'),
               onTap: () {
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status updated to In Progress. Public ActiveWork created for ${issue.trackingId}')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status updated to In Progress for ${issue.trackingId}')));
               },
             ),
             ListTile(
-              leading: const Icon(Icons.verified_rounded, color: AppColors.resolvedStatus),
-              title: const Text('Mark Resolved (Gemini Vision AI Fix Verification)'),
+              leading: const Icon(Icons.auto_awesome, color: AppColors.resolvedStatus),
+              title: const Text('Mark Resolved with Gemini Vision AI Verification'),
+              subtitle: const Text('Upload repair proof photo and run Gemini AI audit'),
               onTap: () {
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gemini Vision AI verified fix quality 95%. Ticket resolved!')));
+                _showGeminiResolutionModal(context, issue);
               },
             ),
           ],
@@ -295,4 +348,117 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       ),
     );
   }
+
+  void _showGeminiResolutionModal(BuildContext context, IssueModel issue) {
+    bool isVerifying = false;
+    GeminiVerificationResult? result;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.darkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctxState, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctxState).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.auto_awesome, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Text('Gemini AI Resolution Audit — ${issue.trackingId}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Upload completed work photo captured by field team to trigger automatic Gemini Vision visual validation.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark),
+              ),
+              const SizedBox(height: 16),
+              if (result != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.resolvedStatus.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.resolvedStatus),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.verified_rounded, color: AppColors.resolvedStatus, size: 20),
+                          const SizedBox(width: 8),
+                          Text('Fix Quality Score: ${(result!.fixQualityScore * 100).toInt()}%',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.resolvedStatus, fontSize: 14)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(result!.verificationSummary, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              ElevatedButton.icon(
+                onPressed: isVerifying
+                    ? null
+                    : () async {
+                        setModalState(() => isVerifying = true);
+                        final picker = ImagePicker();
+                        final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+                        final bytes = picked != null ? await picked.readAsBytes() : null;
+
+                        final verificationService = GeminiVisionVerificationService();
+                        final audit = await verificationService.verifyResolutionQuality(
+                          bytes ?? List.generate(10, (i) => i) as dynamic,
+                          bytes ?? List.generate(10, (i) => i) as dynamic,
+                          issue.category,
+                        );
+
+                        setModalState(() {
+                          isVerifying = false;
+                          result = audit;
+                        });
+
+                        await ref.read(issuesRepositoryProvider).resolveIssueWithProof(
+                              issueId: issue.id,
+                              afterImageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7',
+                              fixQualityScore: audit.fixQualityScore,
+                              isVerifiedFixed: audit.isVerifiedFixed,
+                              verificationSummary: audit.verificationSummary,
+                            );
+
+                        if (mounted) setState(() {});
+                      },
+                icon: isVerifying
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.photo_camera_rounded),
+                label: Text(isVerifying ? 'Gemini AI Auditing Photos...' : 'Pick Repair Photo & Verify'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.nagpurOrange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
+
