@@ -15,10 +15,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   late TabController _tabController;
 
   final _citizenFormKey = GlobalKey<FormState>();
+  final _csoFormKey = GlobalKey<FormState>();
   final _adminFormKey = GlobalKey<FormState>();
 
   final _emailPhoneController = TextEditingController(text: 'citizen@nagpur.gov.in');
   final _citizenPasswordController = TextEditingController(text: 'nagpur123');
+
+  final _csoEmailController = TextEditingController(text: 'cso.dhantoli@nagpur.gov.in');
+  final _csoPasswordController = TextEditingController(text: 'cso123');
+  String _selectedZoneId = 'zone_04';
 
   final _adminEmailController = TextEditingController(text: 'admin.roads@nagpur.gov.in');
   final _adminPasswordController = TextEditingController(text: 'admin123');
@@ -27,7 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -35,6 +40,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     _tabController.dispose();
     _emailPhoneController.dispose();
     _citizenPasswordController.dispose();
+    _csoEmailController.dispose();
+    _csoPasswordController.dispose();
     _adminEmailController.dispose();
     _adminPasswordController.dispose();
     super.dispose();
@@ -121,7 +128,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-                        // Segmented Dual Tab Pill
+                        // Segmented Triple Tab Pill
                         Container(
                           decoration: BoxDecoration(
                             color: AppColors.darkBackground,
@@ -144,19 +151,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                             indicatorSize: TabBarIndicatorSize.tab,
                             labelColor: Colors.white,
                             unselectedLabelColor: AppColors.textSecondaryDark,
-                            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                             dividerColor: Colors.transparent,
                             tabs: const [
-                              Tab(text: 'Citizen Portal'),
-                              Tab(text: 'Dept Officer'),
+                              Tab(text: 'Citizen'),
+                              Tab(text: 'CSO Officer'),
+                              Tab(text: 'Dept Admin'),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
                         // Form Tab Content
                         SizedBox(
-                          height: 340,
+                          height: 350,
                           child: TabBarView(
                             controller: _tabController,
                             children: [
@@ -234,6 +242,111 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
                                       style: OutlinedButton.styleFrom(
                                         side: const BorderSide(color: AppColors.nagpurOrange),
                                         padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // CSO / Zonal Officer Login Form
+                              Form(
+                                key: _csoFormKey,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    DropdownButtonFormField<String>(
+                                      initialValue: _selectedZoneId,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Select Assigned Zone',
+                                        prefixIcon: Icon(Icons.map_outlined, color: AppColors.textSecondaryDark),
+                                      ),
+                                      dropdownColor: AppColors.darkSurface,
+                                      items: AppConstants.zoneIdToNameMap.entries
+                                          .map((e) => DropdownMenuItem(
+                                                value: e.key,
+                                                child: Text(
+                                                  '${e.key.replaceAll("zone_", "Zone ")} — ${e.value}',
+                                                  style: const TextStyle(fontSize: 13, color: Colors.white),
+                                                ),
+                                              ))
+                                          .toList(),
+                                      onChanged: (val) {
+                                        if (val != null) setState(() => _selectedZoneId = val);
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      controller: _csoEmailController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'CSO Officer Email',
+                                        prefixIcon: Icon(Icons.shield_outlined, color: AppColors.textSecondaryDark),
+                                      ),
+                                      validator: (v) => (v == null || v.isEmpty) ? 'Required field' : null,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      controller: _csoPasswordController,
+                                      obscureText: true,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Password',
+                                        prefixIcon: Icon(Icons.lock_outline, color: AppColors.textSecondaryDark),
+                                      ),
+                                      validator: (v) => (v == null || v.isEmpty) ? 'Required field' : null,
+                                    ),
+                                    const SizedBox(height: 14),
+                                    ElevatedButton(
+                                      onPressed: isLoading
+                                          ? null
+                                          : () {
+                                              if (_csoFormKey.currentState!.validate()) {
+                                                final zoneName = AppConstants.zoneIdToNameMap[_selectedZoneId] ?? 'Dhantoli';
+                                                ref.read(authControllerProvider.notifier).loginCsoZonalOfficer(
+                                                      _csoEmailController.text.trim(),
+                                                      _csoPasswordController.text.trim(),
+                                                      _selectedZoneId,
+                                                      zoneName,
+                                                    );
+                                              }
+                                            },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(0xFF10B981),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(14),
+                                        ),
+                                        elevation: 4,
+                                      ),
+                                      child: isLoading
+                                          ? const SizedBox(
+                                              height: 20,
+                                              width: 20,
+                                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                            )
+                                          : const Text(
+                                              'Login as CSO Zonal Officer',
+                                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                            ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    OutlinedButton.icon(
+                                      onPressed: () {
+                                        ref.read(authControllerProvider.notifier).loginCsoZonalOfficer(
+                                              'cso.dhantoli@nagpur.gov.in',
+                                              'cso123',
+                                              'zone_04',
+                                              'Dhantoli',
+                                            );
+                                      },
+                                      icon: const Icon(Icons.verified_user_rounded, color: Color(0xFF10B981)),
+                                      label: const Text(
+                                        'Quick CSO Pass (Rajesh Gaidhani - Zone 04)',
+                                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(color: Color(0xFF10B981)),
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                       ),
                                     ),
@@ -346,3 +459,4 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     );
   }
 }
+

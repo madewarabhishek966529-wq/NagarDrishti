@@ -31,6 +31,11 @@ class AuthController extends StateNotifier<AsyncValue<AppUser?>> {
     state = await AsyncValue.guard(() => _repository.signInAsDepartmentAdmin(email, password, departmentId));
   }
 
+  Future<void> loginCsoZonalOfficer(String email, String password, String zoneId, String zoneName) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => _repository.signInAsCsoZonalOfficer(email, password, zoneId, zoneName));
+  }
+
   Future<void> logout() async {
     state = const AsyncValue.loading();
     await _repository.signOut();

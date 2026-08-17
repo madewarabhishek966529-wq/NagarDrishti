@@ -8,6 +8,7 @@ abstract class AuthRepository {
   AppUser? get currentUser;
   Future<AppUser> signInWithEmailAndPassword(String email, String password);
   Future<AppUser> signInAsDepartmentAdmin(String email, String password, String departmentId);
+  Future<AppUser> signInAsCsoZonalOfficer(String email, String password, String zoneId, String zoneName);
   Future<AppUser> signInWithMockPhone(String phoneNumber, String otpCode);
   Future<void> signOut();
 }
@@ -178,6 +179,50 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<AppUser> signInAsCsoZonalOfficer(String email, String password, String zoneId, String zoneName) async {
+    final auth = _auth;
+    final db = _db;
+
+    if (auth != null && db != null) {
+      try {
+        final credential = await auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        final user = credential.user!;
+        final appUser = AppUser(
+          uid: user.uid,
+          email: email,
+          phoneNumber: '+91 9823350242',
+          displayName: 'Rajesh Gaidhani',
+          role: UserRole.csoZonalOfficer,
+          zoneId: zoneId,
+          zoneName: zoneName,
+          active: true,
+          createdAt: DateTime.now(),
+        );
+        await db.collection('users').doc(user.uid).set(appUser.toMap());
+        _notifyUser(appUser);
+        return appUser;
+      } catch (_) {}
+    }
+
+    final mockCso = AppUser(
+      uid: 'cso_${zoneId.toLowerCase()}',
+      email: email,
+      phoneNumber: '+91 9823350242',
+      displayName: 'Rajesh Gaidhani',
+      role: UserRole.csoZonalOfficer,
+      zoneId: zoneId,
+      zoneName: zoneName,
+      active: true,
+      createdAt: DateTime.now(),
+    );
+    _notifyUser(mockCso);
+    return mockCso;
+  }
+
+  @override
   Future<AppUser> signInWithMockPhone(String phoneNumber, String otpCode) async {
     final mockUser = AppUser(
       uid: 'citizen_phone_${phoneNumber.replaceAll(RegExp(r'\D'), '')}',
@@ -204,3 +249,4 @@ class FirebaseAuthRepository implements AuthRepository {
     _notifyUser(null);
   }
 }
+

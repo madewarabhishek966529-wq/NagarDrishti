@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isCsoOfficer() {
+      return isSignedIn() && (getUserData().role == 'cso_zonal_officer' || request.auth.token.role == 'cso_zonal_officer');
+    }
+    
+    function isDeptAdmin() {
+      return isSignedIn() && (getUserData().role == 'dept_admin' || request.auth.token.role == 'dept_admin');
+    }
+    
+    function getCsoZoneId() {
+      return getUserData().zoneId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && (request.auth.uid == userId || isDeptAdmin());
+      allow delete: if false; // Profiles cannot be deleted
+    }
+
+    // Issues Collection
+    match /issues/{issueId} {
+      // Anyone authenticated can read complaints
+      allow read: if isSignedIn();
+      
+      // Citizens can create new complaints
+      allow create: if isSignedIn();
+      
+      // Update Authorization Rules
+      allow update: if isSignedIn() && (
+        // 1. Dept Admin can update any issue
+        isDeptAdmin() ||
+        
+        // 2. CSO Zonal Officer can update issues belonging to their assigned zone only
+        (isCsoOfficer() && (
+          resource.data.zoneId == getCsoZoneId() ||
+          resource.data.ward.matches('.*' + getCsoZoneId() + '.*')
+        )) ||
+        
+        // 3. Citizen can update their own reported issue (rating or reopen)
+        (resource.data.createdBy == request.auth.uid)
+      );
+
+      // Deletion is strictly prohibited at backend layer
+      allow delete: if false;
+
+      // CSO Action Audit Logs Subcollection
+      match /actionLogs/{logId} {
+        allow read: if isSignedIn() && (isCsoOfficer() || isDeptAdmin());
+        allow create: if isSignedIn() && (isCsoOfficer() || isDeptAdmin());
+        allow update, delete: if false; // Action logs are immutable audit history
+      }
+    }
+
+    // Weather Cache & System Collections
+    match /weatherCache/{docId} {
+      allow read: if true;
+      allow write: if isCsoOfficer() || isDeptAdmin();
+    }
+  }
+}

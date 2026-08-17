@@ -13,6 +13,27 @@ abstract class NotificationService {
     required String trackingId,
     required int reportCount,
   });
+  Future<void> notifyCsoRedAlert({
+    required String zoneId,
+    required String trackingId,
+    required String category,
+    required int reportCount,
+  });
+  Future<void> notifyCsoSlaBreached({
+    required String zoneId,
+    required String trackingId,
+    required String category,
+  });
+  Future<void> notifyCsoSosEmergency({
+    required String zoneId,
+    required String trackingId,
+    required String title,
+  });
+  Future<void> notifyCsoReopenedIssue({
+    required String zoneId,
+    required String trackingId,
+    required String citizenFeedback,
+  });
 }
 
 class FcmNotificationService implements NotificationService {
@@ -65,4 +86,50 @@ class FcmNotificationService implements NotificationService {
       '🔔 [FCM PUSH -> CITIZENS]: Your reported issue ($trackingId) has been escalated to RED ALERT! $reportCount people confirmed this.',
     );
   }
+
+  @override
+  Future<void> notifyCsoRedAlert({
+    required String zoneId,
+    required String trackingId,
+    required String category,
+    required int reportCount,
+  }) async {
+    debugPrint(
+      '🚨 [FCM PUSH -> CSO OFFICER ($zoneId)]: RED ALERT! $category issue ($trackingId) reached $reportCount citizen reports in your zone.',
+    );
+  }
+
+  @override
+  Future<void> notifyCsoSlaBreached({
+    required String zoneId,
+    required String trackingId,
+    required String category,
+  }) async {
+    debugPrint(
+      '⚠️ [FCM PUSH -> CSO OFFICER ($zoneId)]: SLA BREACH! $category ticket $trackingId has breached resolution window.',
+    );
+  }
+
+  @override
+  Future<void> notifyCsoSosEmergency({
+    required String zoneId,
+    required String trackingId,
+    required String title,
+  }) async {
+    debugPrint(
+      '⚡ [FCM PUSH -> CSO OFFICER ($zoneId)]: 4-HR SOS CRITICAL HAZARD! $title ($trackingId) requires immediate dispatch.',
+    );
+  }
+
+  @override
+  Future<void> notifyCsoReopenedIssue({
+    required String zoneId,
+    required String trackingId,
+    required String citizenFeedback,
+  }) async {
+    debugPrint(
+      '🔄 [FCM PUSH -> CSO OFFICER ($zoneId)]: REOPENED TICKET! Citizen reopened $trackingId: "$citizenFeedback".',
+    );
+  }
 }
+
