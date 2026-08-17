@@ -36,28 +36,42 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         elevation: 3,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: AppColors.nagpurOrange.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: AppColors.nagpurOrange),
                   ),
-                  child: const Text('NMC CITY COMMAND CENTER', style: TextStyle(color: AppColors.nagpurOrange, fontSize: 10, fontWeight: FontWeight.w900)),
+                  child: const Text('NMC COMMAND', style: TextStyle(color: AppColors.nagpurOrange, fontSize: 9, fontWeight: FontWeight.w900)),
                 ),
-                const SizedBox(width: 8),
-                const Text('Executive Command', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                const SizedBox(width: 6),
+                const Flexible(
+                  child: Text(
+                    'Executive Command',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
-            Text('Authority: ${user?.displayName ?? "NMC Municipal Commissioner"} (${user?.departmentId ?? "All 10 Zones"})', style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryDark)),
+            Text(
+              'Authority: ${user?.displayName ?? "Municipal Commissioner"} (${user?.departmentId ?? "All 10 Zones"})',
+              style: const TextStyle(fontSize: 10, color: AppColors.textSecondaryDark),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.nagpurOrange),
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.nagpurOrange, size: 20),
             tooltip: 'Refresh Data',
             onPressed: () {
               ref.invalidate(cityKpiOverviewProvider);
@@ -67,12 +81,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.menu_open_rounded, color: Colors.white),
+            icon: const Icon(Icons.menu_open_rounded, color: Colors.white, size: 20),
             tooltip: 'Command Navigation Menu',
             onPressed: () => _showCommandNavModal(context),
           ),
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: AppColors.redAlert),
+            icon: const Icon(Icons.logout_rounded, color: AppColors.redAlert, size: 20),
             tooltip: 'Logout',
             onPressed: () {
               ref.read(authControllerProvider.notifier).logout();

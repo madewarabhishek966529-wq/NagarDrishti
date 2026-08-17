@@ -147,7 +147,7 @@ class FirestoreCsoRepository implements CsoRepository {
     final db = _db;
     if (db != null) {
       try {
-        final snap = await db.collection('issues').doc(issueId).collection('actionLogs').orderBy('timestamp', descending: true).get();
+        final snap = await db.collection('issues').doc(issueId).collection('actionLogs').orderBy('timestamp', descending: true).get().timeout(const Duration(seconds: 3));
         return snap.docs.map((doc) => CsoActionLog.fromMap(doc.data(), doc.id)).toList();
       } catch (_) {}
     }
@@ -185,7 +185,7 @@ class FirestoreCsoRepository implements CsoRepository {
     final db = _db;
     if (db != null) {
       try {
-        await db.collection('issues').doc(issueId).collection('actionLogs').doc(log.id).set(log.toMap());
+        await db.collection('issues').doc(issueId).collection('actionLogs').doc(log.id).set(log.toMap()).timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
 

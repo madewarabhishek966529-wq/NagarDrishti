@@ -194,6 +194,7 @@ class ReportController extends StateNotifier<ReportState> {
     required String userId,
   }) async {
     state = state.copyWith(isSubmitting: true);
+    IssueModel? newIssue;
     try {
       final issueId = 'doc_${DateTime.now().millisecondsSinceEpoch}';
       final trackingNum = (DateTime.now().millisecondsSinceEpoch % 10000).toString().padLeft(4, '0');
@@ -208,7 +209,7 @@ class ReportController extends StateNotifier<ReportState> {
               ? state.voiceDescription
               : (state.aiResult?.summary ?? 'Civic issue report captured via Nagardrishti AI.'));
 
-      final newIssue = IssueModel(
+      newIssue = IssueModel(
         id: issueId,
         trackingId: trackingId,
         title: '${state.isSosEmergency ? "[SOS EMERGENCY] " : ""}${state.selectedCategory} near ${state.location?.address.split(',').first ?? "Road"}',
@@ -236,7 +237,7 @@ class ReportController extends StateNotifier<ReportState> {
         newIssue,
         duplicateService,
         notificationService,
-      );
+      ).timeout(const Duration(seconds: 4), onTimeout: () => newIssue!);
 
       state = state.copyWith(
         isSubmitting: false,
@@ -246,9 +247,10 @@ class ReportController extends StateNotifier<ReportState> {
     } catch (e) {
       state = state.copyWith(
         isSubmitting: false,
-        errorMessage: 'Submission failed: $e',
+        submittedIssue: newIssue,
+        errorMessage: 'Local submission saved: $e',
       );
-      return null;
+      return newIssue;
     }
   }
 

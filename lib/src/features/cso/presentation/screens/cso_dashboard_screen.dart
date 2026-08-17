@@ -37,47 +37,55 @@ class _CsoDashboardScreenState extends ConsumerState<CsoDashboardScreen> {
         elevation: 2,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0xFF10B981).withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: const Color(0xFF10B981)),
                   ),
                   child: Text(
-                    'CSO OFFICER — ${zoneId.replaceAll("zone_", "ZONE ")}',
-                    style: const TextStyle(color: Color(0xFF10B981), fontSize: 10, fontWeight: FontWeight.w900),
+                    'CSO ${zoneId.replaceAll("zone_", "Z-")}',
+                    style: const TextStyle(color: Color(0xFF10B981), fontSize: 9, fontWeight: FontWeight.w900),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '$zoneName Zone Desk',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    '$zoneName Zone Desk',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
             Text(
               currentUser?.displayName ?? 'Rajesh Gaidhani',
-              style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryDark),
+              style: const TextStyle(fontSize: 10, color: AppColors.textSecondaryDark),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.map_rounded, color: AppColors.nagpurOrange),
+            icon: const Icon(Icons.map_rounded, color: AppColors.nagpurOrange, size: 20),
             tooltip: 'Zone GIS Map',
             onPressed: () => context.push('/cso/map'),
           ),
           IconButton(
-            icon: const Icon(Icons.warning_amber_rounded, color: AppColors.redAlert),
+            icon: const Icon(Icons.warning_amber_rounded, color: AppColors.redAlert, size: 20),
             tooltip: 'Major Problems',
             onPressed: () => context.push('/cso/major-problems'),
           ),
           IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white70),
+            icon: const Icon(Icons.logout_rounded, color: Colors.white70, size: 20),
             tooltip: 'Logout',
             onPressed: () {
               ref.read(authControllerProvider.notifier).logout();
@@ -285,22 +293,29 @@ class _CsoDashboardScreenState extends ConsumerState<CsoDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'NMC Zone 04 — $zoneName',
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Nagpur Municipal Corporation Zonal Office',
-                    style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 12),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NMC Zone 04 — $zoneName',
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Nagpur Municipal Corporation Zonal Office',
+                      style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: const Color(0xFF10B981).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -309,9 +324,9 @@ class _CsoDashboardScreenState extends ConsumerState<CsoDashboardScreen> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.circle, color: Color(0xFF10B981), size: 8),
-                    SizedBox(width: 6),
-                    Text('Active Duty', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 11)),
+                    Icon(Icons.circle, color: Color(0xFF10B981), size: 7),
+                    SizedBox(width: 5),
+                    Text('Active', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 10)),
                   ],
                 ),
               ),

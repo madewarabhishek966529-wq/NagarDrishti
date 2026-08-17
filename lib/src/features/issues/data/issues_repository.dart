@@ -120,16 +120,17 @@ class FirestoreIssuesRepository implements IssuesRepository {
 
   @override
   Future<IssueModel> createIssue(IssueModel issue) async {
+    _mockIssues.removeWhere((i) => i.id == issue.id);
+    _mockIssues.insert(0, issue);
+
     final db = _db;
     if (db != null) {
       try {
         final docRef = db.collection('issues').doc(issue.id);
-        await docRef.set(issue.toMap());
-        return issue;
+        await docRef.set(issue.toMap()).timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
 
-    _mockIssues.insert(0, issue);
     return issue;
   }
 
@@ -139,84 +140,87 @@ class FirestoreIssuesRepository implements IssuesRepository {
     DuplicateDetectionService duplicateService,
     NotificationService notificationService,
   ) async {
-    final existing = await fetchIssues();
-    final match = duplicateService.findNearbyDuplicate(issue, existing);
+    try {
+      final existing = await fetchIssues().timeout(const Duration(seconds: 3), onTimeout: () => _mockIssues);
+      final match = duplicateService.findNearbyDuplicate(issue, existing);
 
-    if (match.isDuplicate && match.parentIssue != null) {
-      final parent = match.parentIssue!;
-      final updatedReportCount = parent.reportCount + 1;
-      final isNowRedAlert = updatedReportCount >= 10;
+      if (match.isDuplicate && match.parentIssue != null) {
+        final parent = match.parentIssue!;
+        final updatedReportCount = parent.reportCount + 1;
+        final isNowRedAlert = updatedReportCount >= 10;
 
-      final updatedParent = IssueModel(
-        id: parent.id,
-        trackingId: parent.trackingId,
-        title: parent.title,
-        description: parent.description,
-        category: parent.category,
-        subCategory: parent.subCategory,
-        severity: isNowRedAlert ? IssueSeverity.critical : parent.severity,
-        confidenceScore: parent.confidenceScore,
-        imageUrl: parent.imageUrl,
-        afterImageUrl: parent.afterImageUrl,
-        latitude: parent.latitude,
-        longitude: parent.longitude,
-        address: parent.address,
-        ward: parent.ward,
-        status: parent.status,
-        redAlert: isNowRedAlert || parent.redAlert,
-        reportCount: updatedReportCount,
-        parentIssueId: parent.parentIssueId,
-        createdBy: parent.createdBy,
-        assignedDepartmentId: parent.assignedDepartmentId,
-        createdAt: parent.createdAt,
-        updatedAt: DateTime.now(),
-        slaDeadline: parent.slaDeadline,
-      );
-
-      // Create linked child ticket
-      final childTicket = IssueModel(
-        id: issue.id,
-        trackingId: issue.trackingId,
-        title: issue.title,
-        description: issue.description,
-        category: issue.category,
-        subCategory: issue.subCategory,
-        severity: issue.severity,
-        confidenceScore: issue.confidenceScore,
-        imageUrl: issue.imageUrl,
-        latitude: issue.latitude,
-        longitude: issue.longitude,
-        address: issue.address,
-        ward: issue.ward,
-        status: issue.status,
-        redAlert: updatedParent.redAlert,
-        reportCount: 1,
-        parentIssueId: parent.id,
-        createdBy: issue.createdBy,
-        assignedDepartmentId: issue.assignedDepartmentId,
-        createdAt: issue.createdAt,
-        updatedAt: issue.updatedAt,
-        slaDeadline: issue.slaDeadline,
-      );
-
-      await createIssue(childTicket);
-      await createIssue(updatedParent);
-
-      if (isNowRedAlert && !parent.redAlert) {
-        await notificationService.sendRedAlertPushNotification(
-          departmentId: parent.assignedDepartmentId,
+        final updatedParent = IssueModel(
+          id: parent.id,
+          trackingId: parent.trackingId,
+          title: parent.title,
+          description: parent.description,
+          category: parent.category,
+          subCategory: parent.subCategory,
+          severity: isNowRedAlert ? IssueSeverity.critical : parent.severity,
+          confidenceScore: parent.confidenceScore,
+          imageUrl: parent.imageUrl,
+          afterImageUrl: parent.afterImageUrl,
+          latitude: parent.latitude,
+          longitude: parent.longitude,
+          address: parent.address,
           ward: parent.ward,
-          trackingId: parent.trackingId,
+          status: parent.status,
+          redAlert: isNowRedAlert || parent.redAlert,
           reportCount: updatedReportCount,
+          parentIssueId: parent.parentIssueId,
+          createdBy: parent.createdBy,
+          assignedDepartmentId: parent.assignedDepartmentId,
+          createdAt: parent.createdAt,
+          updatedAt: DateTime.now(),
+          slaDeadline: parent.slaDeadline,
         );
-        await notificationService.notifyCitizensEscalated(
-          trackingId: parent.trackingId,
-          reportCount: updatedReportCount,
-        );
-      }
 
-      return childTicket;
-    }
+        final childTicket = IssueModel(
+          id: issue.id,
+          trackingId: issue.trackingId,
+          title: issue.title,
+          description: issue.description,
+          category: issue.category,
+          subCategory: issue.subCategory,
+          severity: issue.severity,
+          confidenceScore: issue.confidenceScore,
+          imageUrl: issue.imageUrl,
+          latitude: issue.latitude,
+          longitude: issue.longitude,
+          address: issue.address,
+          ward: issue.ward,
+          status: issue.status,
+          redAlert: updatedParent.redAlert,
+          reportCount: 1,
+          parentIssueId: parent.id,
+          createdBy: issue.createdBy,
+          assignedDepartmentId: issue.assignedDepartmentId,
+          createdAt: issue.createdAt,
+          updatedAt: issue.updatedAt,
+          slaDeadline: issue.slaDeadline,
+        );
+
+        await createIssue(childTicket);
+        await createIssue(updatedParent);
+
+        if (isNowRedAlert && !parent.redAlert) {
+          try {
+            await notificationService.sendRedAlertPushNotification(
+              departmentId: parent.assignedDepartmentId,
+              ward: parent.ward,
+              trackingId: parent.trackingId,
+              reportCount: updatedReportCount,
+            ).timeout(const Duration(seconds: 2));
+            await notificationService.notifyCitizensEscalated(
+              trackingId: parent.trackingId,
+              reportCount: updatedReportCount,
+            ).timeout(const Duration(seconds: 2));
+          } catch (_) {}
+        }
+
+        return childTicket;
+      }
+    } catch (_) {}
 
     return await createIssue(issue);
   }
@@ -226,8 +230,16 @@ class FirestoreIssuesRepository implements IssuesRepository {
     final db = _db;
     if (db != null) {
       try {
-        final snapshot = await db.collection('issues').orderBy('createdAt', descending: true).get();
-        return snapshot.docs.map((doc) => IssueModel.fromMap(doc.data(), doc.id)).toList();
+        final snapshot = await db.collection('issues').orderBy('createdAt', descending: true).get().timeout(const Duration(seconds: 3));
+        final firestoreList = snapshot.docs.map((doc) => IssueModel.fromMap(doc.data(), doc.id)).toList();
+        if (firestoreList.isNotEmpty) {
+          for (final fIssue in firestoreList) {
+            if (!_mockIssues.any((m) => m.id == fIssue.id)) {
+              _mockIssues.add(fIssue);
+            }
+          }
+          return _mockIssues;
+        }
       } catch (_) {}
     }
     return _mockIssues;
@@ -275,7 +287,7 @@ class FirestoreIssuesRepository implements IssuesRepository {
 
     if (db != null) {
       try {
-        await db.collection('issues').doc(issueId).update(data);
+        await db.collection('issues').doc(issueId).update(data).timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
 

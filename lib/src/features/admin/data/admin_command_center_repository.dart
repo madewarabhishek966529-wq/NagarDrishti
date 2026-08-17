@@ -373,7 +373,7 @@ class FirestoreAdminCommandCenterRepository implements AdminCommandCenterReposit
     final db = _db;
     if (db != null) {
       try {
-        final snap = await db.collection('users').where('role', isEqualTo: 'CSO_ZONAL_OFFICER').get();
+        final snap = await db.collection('users').where('role', isEqualTo: 'CSO_ZONAL_OFFICER').get().timeout(const Duration(seconds: 3));
         if (snap.docs.isNotEmpty) {
           return snap.docs.map((doc) {
             final data = doc.data();
@@ -424,7 +424,7 @@ class FirestoreAdminCommandCenterRepository implements AdminCommandCenterReposit
     final db = _db;
     if (db != null) {
       try {
-        await db.collection('users').doc(uid).update({'active': active});
+        await db.collection('users').doc(uid).update({'active': active}).timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
   }
@@ -445,7 +445,7 @@ class FirestoreAdminCommandCenterRepository implements AdminCommandCenterReposit
           'zoneName': cso.zoneName,
           'active': cso.active,
           'createdAt': DateTime.now().toIso8601String(),
-        });
+        }).timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
   }
@@ -495,7 +495,7 @@ class FirestoreAdminCommandCenterRepository implements AdminCommandCenterReposit
     final db = _db;
     if (db != null) {
       try {
-        final snap = await db.collection('auditLogs').orderBy('timestamp', descending: true).get();
+        final snap = await db.collection('auditLogs').orderBy('timestamp', descending: true).get().timeout(const Duration(seconds: 3));
         if (snap.docs.isNotEmpty) {
           return snap.docs.map((d) => CityAuditLog.fromMap(d.data(), d.id)).toList();
         }
@@ -552,7 +552,7 @@ class FirestoreAdminCommandCenterRepository implements AdminCommandCenterReposit
     final db = _db;
     if (db != null) {
       try {
-        await db.collection('auditLogs').doc(log.id).set(log.toMap());
+        await db.collection('auditLogs').doc(log.id).set(log.toMap()).timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
   }

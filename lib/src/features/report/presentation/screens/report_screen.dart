@@ -409,6 +409,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                             userId: userId,
                           );
                       if (issue != null) {
+                        _descriptionController.clear();
+                        ref.read(reportControllerProvider.notifier).reset();
                         nav.push(
                           MaterialPageRoute(
                             builder: (ctx) => ReportConfirmationScreen(issue: issue),
