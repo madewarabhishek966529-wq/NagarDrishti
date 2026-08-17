@@ -50,6 +50,22 @@ class AppConstants {
     'zone_10': 'Mangalwari',
   };
 
+  static const String nmcCitizenHelpline = '1800-120-8040';
+
+  // Zone CSO Zonal Officers Mapping
+  static const Map<String, Map<String, String>> zoneCsoOfficersMap = {
+    'zone_01': {'name': 'Sanjay Kulkarni', 'phone': '9823350101', 'designation': 'Zonal Officer / CSO'},
+    'zone_02': {'name': 'Anil Deshmukh', 'phone': '9823350102', 'designation': 'Zonal Officer / CSO'},
+    'zone_03': {'name': 'Pravin Mahajan', 'phone': '9823350103', 'designation': 'Zonal Officer / CSO'},
+    'zone_04': {'name': 'Rajesh Gaidhani', 'phone': '9823350242', 'designation': 'Zonal Officer / CSO'},
+    'zone_05': {'name': 'Vikas Patil', 'phone': '9823350105', 'designation': 'Zonal Officer / CSO'},
+    'zone_06': {'name': 'Suresh Raut', 'phone': '9823350106', 'designation': 'Zonal Officer / CSO'},
+    'zone_07': {'name': 'Manoj Shinde', 'phone': '9823350107', 'designation': 'Zonal Officer / CSO'},
+    'zone_08': {'name': 'Ashok Wankhede', 'phone': '9823350108', 'designation': 'Zonal Officer / CSO'},
+    'zone_09': {'name': 'Pradeep Meshram', 'phone': '9823350109', 'designation': 'Zonal Officer / CSO'},
+    'zone_10': {'name': 'Nitendra Gawande', 'phone': '9823350110', 'designation': 'Zonal Officer / CSO'},
+  };
+
   static const Map<String, String> wardToZoneIdMap = {
     'Ward 1 - Laxmi Nagar': 'zone_01',
     'Ward 2 - Dharampeth': 'zone_02',

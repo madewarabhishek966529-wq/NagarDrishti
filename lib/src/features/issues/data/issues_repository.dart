@@ -31,6 +31,14 @@ abstract class IssuesRepository {
     String? feedback,
   });
   Future<void> updateIssueStatus(String issueId, IssueStatus newStatus);
+  Future<void> recordCallEvent({
+    required String issueId,
+    required String trackingId,
+    required String citizenId,
+    required String officerName,
+    required String officerPhone,
+    required String action,
+  });
 }
 
 class FirestoreIssuesRepository implements IssuesRepository {
@@ -467,6 +475,33 @@ class FirestoreIssuesRepository implements IssuesRepository {
         updatedAt: DateTime.now(),
         slaDeadline: old.slaDeadline,
       );
+    }
+  }
+
+  @override
+  Future<void> recordCallEvent({
+    required String issueId,
+    required String trackingId,
+    required String citizenId,
+    required String officerName,
+    required String officerPhone,
+    required String action,
+  }) async {
+    final db = _db;
+    final logData = {
+      'issueId': issueId,
+      'trackingId': trackingId,
+      'citizenId': citizenId,
+      'officerName': officerName,
+      'officerPhone': officerPhone,
+      'action': action,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    if (db != null) {
+      try {
+        await db.collection('callLogs').add(logData);
+      } catch (_) {}
     }
   }
 }

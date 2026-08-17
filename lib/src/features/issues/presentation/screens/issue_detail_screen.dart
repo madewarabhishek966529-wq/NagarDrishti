@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nagardrishti/src/core/constants/app_colors.dart';
+import 'package:nagardrishti/src/core/constants/app_constants.dart';
+import 'package:nagardrishti/src/core/utils/app_language_provider.dart';
+import 'package:nagardrishti/src/core/utils/cso_contact_helper.dart';
 import 'package:nagardrishti/src/features/report/presentation/controllers/report_controller.dart';
-import '../../../../core/constants/app_colors.dart';
 import '../../domain/issue_model.dart';
 
 class IssueDetailScreen extends ConsumerWidget {
@@ -12,12 +15,14 @@ class IssueDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final issuesRepo = ref.watch(issuesRepositoryProvider);
+    final currentLang = ref.watch(appLanguageProvider);
 
     return FutureBuilder<IssueModel?>(
       future: issuesRepo.getIssueById(issueId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
+            backgroundColor: AppColors.darkBackground,
             body: Center(child: CircularProgressIndicator(color: AppColors.nagpurOrange)),
           );
         }
@@ -46,8 +51,16 @@ class IssueDetailScreen extends ConsumerWidget {
               slaDeadline: DateTime.now().add(const Duration(hours: 48)),
             );
 
+        final csoInfo = CsoContactHelper.getCsoForWard(issue.ward);
+        final now = DateTime.now();
+        final isOverdue = now.isAfter(issue.slaDeadline) && issue.status != IssueStatus.resolved;
+        final isAtRisk = !isOverdue && issue.status != IssueStatus.resolved && issue.slaDeadline.difference(now).inHours <= 6;
+        final isHighPriority = issue.redAlert || issue.severity == IssueSeverity.critical || isOverdue || isAtRisk;
+
         return Scaffold(
+          backgroundColor: AppColors.darkBackground,
           appBar: AppBar(
+            backgroundColor: AppColors.darkSurface,
             title: Text('Ticket ${issue.trackingId}'),
           ),
           body: SingleChildScrollView(
@@ -55,7 +68,7 @@ class IssueDetailScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Red Alert Escalation Banner if critical
+                // Red Alert / SOS Banner if critical
                 if (issue.redAlert) ...[
                   Container(
                     width: double.infinity,
@@ -81,20 +94,86 @@ class IssueDetailScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '🚨 CRITICAL RED ALERT (${issue.reportCount} Reports)',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.redAlert,
-                                  fontSize: 14,
-                                ),
+                                '🚨 RED ALERT (${issue.reportCount} Citizen Reports)',
+                                style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.redAlert, fontSize: 14),
                               ),
                               const SizedBox(height: 2),
-                              const Text(
-                                'Auto-escalated to Department Officers via FCM Push Alert.',
-                                style: TextStyle(fontSize: 11, color: Colors.white70),
+                              Text(
+                                'Responsible CSO Officer: ${csoInfo.name} (📞 ${csoInfo.phone})',
+                                style: const TextStyle(fontSize: 11, color: Colors.white70),
                               ),
                             ],
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // NEED FASTER ACTION? ESCALATION CARD FOR HIGH PRIORITY COMPLAINTS
+                if (isHighPriority && issue.status != IssueStatus.resolved) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.amber, width: 1.5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.speed_rounded, color: Colors.amber, size: 22),
+                            const SizedBox(width: 8),
+                            Text(
+                              AppStrings.tr('needFasterAction', currentLang),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Your complaint is assigned to Zone ${csoInfo.zoneId.replaceAll("zone_", "")} (${csoInfo.zoneName}) for fast-track action.',
+                          style: const TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Colors.amber.withValues(alpha: 0.2),
+                              child: Text(csoInfo.name[0], style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(csoInfo.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                                  Text('${csoInfo.designation} • 📞 ${csoInfo.phone}', style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                CsoContactHelper.initiateCsoCall(
+                                  context: context,
+                                  ref: ref,
+                                  phoneNumber: csoInfo.phone,
+                                  officerName: csoInfo.name,
+                                  issueId: issue.id,
+                                  trackingId: issue.trackingId,
+                                  zoneName: csoInfo.zoneName,
+                                );
+                              },
+                              icon: const Icon(Icons.phone, size: 14),
+                              label: const Text('Call Officer', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF10B981), foregroundColor: Colors.white),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -116,29 +195,69 @@ class IssueDetailScreen extends ConsumerWidget {
                               side: BorderSide.none,
                               label: Text(
                                 issue.category,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.nagpurOrange,
-                                ),
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.nagpurOrange),
                               ),
                             ),
                             const Spacer(),
-                            Text(
-                              'Ward: ${issue.ward}',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryDark),
-                            ),
+                            Text('Ward: ${issue.ward}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryDark)),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          issue.title,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                        Text(issue.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
-                        Text(
-                          issue.description,
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryDark),
+                        Text(issue.description, style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryDark)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // RESPONSIBLE CSO OFFICER & HELPLINE CARD
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.badge_rounded, color: Color(0xFF10B981), size: 22),
+                            const SizedBox(width: 10),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(csoInfo.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                Text('Assigned ${csoInfo.designation} (${csoInfo.zoneName})', style: const TextStyle(fontSize: 11, color: AppColors.nagpurOrange)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const Divider(color: AppColors.darkCardBorder, height: 20),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                CsoContactHelper.initiateCsoCall(
+                                  context: context,
+                                  ref: ref,
+                                  phoneNumber: csoInfo.phone,
+                                  officerName: csoInfo.name,
+                                  issueId: issue.id,
+                                  trackingId: issue.trackingId,
+                                  zoneName: csoInfo.zoneName,
+                                );
+                              },
+                              icon: const Icon(Icons.phone_in_talk, size: 14, color: Color(0xFF10B981)),
+                              label: Text('Call CSO: ${csoInfo.phone}', style: const TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                            OutlinedButton.icon(
+                              onPressed: () => CsoContactHelper.initiateHelplineCall(context: context),
+                              icon: const Icon(Icons.headset_mic, size: 14, color: Colors.white70),
+                              label: Text('Helpline: ${AppConstants.nmcCitizenHelpline}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -146,28 +265,32 @@ class IssueDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Status Timeline Progress View
+                // Complaint Status Timeline Progress View
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Complaint Status Timeline',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                        ),
+                        const Text('Complaint Status Timeline', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            _buildTimelineStep('Reported', true, isCurrent: issue.status == IssueStatus.reported),
-                            _buildTimelineConnector(issue.status != IssueStatus.reported),
-                            _buildTimelineStep('Acknowledged', issue.status.index >= 1, isCurrent: issue.status == IssueStatus.acknowledged),
-                            _buildTimelineConnector(issue.status.index >= 2),
-                            _buildTimelineStep('In Progress', issue.status.index >= 2, isCurrent: issue.status == IssueStatus.inProgress),
-                            _buildTimelineConnector(issue.status.index >= 3),
-                            _buildTimelineStep('Resolved', issue.status.index >= 3, isCurrent: issue.status == IssueStatus.resolved),
-                          ],
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildTimelineStep('Submitted', true, isCurrent: issue.status == IssueStatus.reported),
+                              _buildTimelineConnector(true),
+                              _buildTimelineStep('Zone Detected', true, isCurrent: false),
+                              _buildTimelineConnector(true),
+                              _buildTimelineStep('CSO Assigned', true, isCurrent: false),
+                              _buildTimelineConnector(issue.status.index >= 1),
+                              _buildTimelineStep('Acknowledged', issue.status.index >= 1, isCurrent: issue.status == IssueStatus.acknowledged),
+                              _buildTimelineConnector(issue.status.index >= 2),
+                              _buildTimelineStep('In Progress', issue.status.index >= 2, isCurrent: issue.status == IssueStatus.inProgress),
+                              _buildTimelineConnector(issue.status.index >= 3),
+                              _buildTimelineStep('Resolved & AI Verified', issue.status.index >= 3, isCurrent: issue.status == IssueStatus.resolved),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -194,15 +317,9 @@ class IssueDetailScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Assigned: ${issue.assignedDepartmentId}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              ),
+                              Text('Assigned Dept: ${issue.assignedDepartmentId.replaceAll("DEPT_", "")}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                               const SizedBox(height: 2),
-                              Text(
-                                'SLA Target: ${issue.slaDeadline.difference(DateTime.now()).inHours.abs()} Hours remaining',
-                                style: const TextStyle(fontSize: 12, color: AppColors.nagpurOrange),
-                              ),
+                              Text('SLA Target: ${issue.slaDeadline.difference(DateTime.now()).inHours.abs()} Hours remaining', style: const TextStyle(fontSize: 12, color: AppColors.nagpurOrange)),
                             ],
                           ),
                         ),
@@ -212,7 +329,7 @@ class IssueDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Proof-of-Fix Before & After Card (if resolved or afterImageUrl available)
+                // Proof-of-Fix Before & After Card (if resolved)
                 if (issue.status == IssueStatus.resolved || issue.afterImageUrl != null) ...[
                   Card(
                     child: Padding(
@@ -224,8 +341,7 @@ class IssueDetailScreen extends ConsumerWidget {
                             children: [
                               const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
                               const SizedBox(width: 8),
-                              const Text('Gemini AI Verification Proof',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                              const Text('Gemini AI Verification Proof', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                               const Spacer(),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -235,8 +351,7 @@ class IssueDetailScreen extends ConsumerWidget {
                                 ),
                                 child: Text(
                                   '${((issue.fixQualityScore ?? 0.95) * 100).toInt()}% Verified Fix',
-                                  style: const TextStyle(
-                                      fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.resolvedStatus),
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.resolvedStatus),
                                 ),
                               ),
                             ],
@@ -294,65 +409,6 @@ class IssueDetailScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // Citizen Satisfaction Feedback / Re-open Section
-                if (issue.status == IssueStatus.resolved) ...[
-                  Card(
-                    color: AppColors.darkSurface,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Text(
-                            'Citizen Verification & Feedback',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Are you satisfied with the work completed by the municipal department?',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark),
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    _showRatingDialog(context, ref, issue);
-                                  },
-                                  icon: const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-                                  label: const Text('Accept & Rate'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.resolvedStatus,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    _showReopenDialog(context, ref, issue);
-                                  },
-                                  icon: const Icon(Icons.replay_rounded, color: AppColors.redAlert, size: 18),
-                                  label: const Text('Reject & Re-open', style: TextStyle(color: AppColors.redAlert)),
-                                  style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(color: AppColors.redAlert),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
@@ -361,135 +417,18 @@ class IssueDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _showRatingDialog(BuildContext context, WidgetRef ref, IssueModel issue) {
-    int selectedRating = 5;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.darkSurface,
-          title: const Text('Rate Resolution Quality', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('How well was this issue resolved by NMC department?', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark)),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  5,
-                  (index) => IconButton(
-                    icon: Icon(
-                      index < selectedRating ? Icons.star_rounded : Icons.star_border_rounded,
-                      color: Colors.amber,
-                      size: 32,
-                    ),
-                    onPressed: () => setDialogState(() => selectedRating = index + 1),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondaryDark)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await ref.read(issuesRepositoryProvider).rateResolvedIssue(
-                      issueId: issue.id,
-                      rating: selectedRating,
-                    );
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Thank you! Rating saved +50 Citizen Karma awarded 🎉')),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.nagpurOrange),
-              child: const Text('Submit Rating'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showReopenDialog(BuildContext context, WidgetRef ref, IssueModel issue) {
-    final feedbackController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.darkSurface,
-        title: const Text('Re-open Complaint', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.redAlert)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Please state why the fix was incomplete or defective.', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryDark)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: feedbackController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'e.g. Debris was left on road, pothole refilled unevenly...',
-                labelText: 'Reason for Re-opening',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondaryDark)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final reason = feedbackController.text.trim();
-              if (reason.isEmpty) return;
-              Navigator.pop(ctx);
-              await ref.read(issuesRepositoryProvider).reopenIssue(
-                    issueId: issue.id,
-                    citizenFeedback: reason,
-                  );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Ticket re-opened and escalated to Department Head!')),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.redAlert),
-            child: const Text('Confirm Re-open'),
-          ),
-        ],
-      ),
-    );
-  }
-
-
   Widget _buildTimelineStep(String title, bool isDone, {bool isCurrent = false}) {
-    final color = isDone
-        ? (isCurrent ? AppColors.nagpurOrange : AppColors.resolvedStatus)
-        : AppColors.reportedStatus;
+    final color = isDone ? (isCurrent ? AppColors.nagpurOrange : AppColors.resolvedStatus) : AppColors.reportedStatus;
 
-    return Expanded(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Column(
         children: [
           Container(
             width: 22,
             height: 22,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isDone ? Icons.check : Icons.circle,
-              size: 14,
-              color: Colors.white,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            child: Icon(isDone ? Icons.check : Icons.circle, size: 14, color: Colors.white),
           ),
           const SizedBox(height: 6),
           Text(
@@ -508,12 +447,9 @@ class IssueDetailScreen extends ConsumerWidget {
 
   Widget _buildTimelineConnector(bool isDone) {
     return Container(
-      width: 20,
+      width: 16,
       height: 2,
       color: isDone ? AppColors.resolvedStatus : AppColors.reportedStatus,
     );
   }
 }
-
-
-

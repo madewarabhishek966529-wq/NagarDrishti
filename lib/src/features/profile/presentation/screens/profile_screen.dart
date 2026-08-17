@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/app_language_provider.dart';
+import '../../../../core/utils/cso_contact_helper.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../auth/domain/app_user.dart';
 
@@ -68,7 +70,99 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // MY NMC ZONE CARD ON PROFILE
+            Builder(
+              builder: (context) {
+                final currentLang = ref.watch(appLanguageProvider);
+                final zoneId = user?.zoneId ?? 'zone_04';
+                final csoInfo = CsoContactHelper.getCsoForZone(zoneId);
+
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.darkSurface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.location_on_rounded, color: Color(0xFF10B981), size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  AppStrings.tr('yourZone', currentLang),
+                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryDark, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  'Zone ${csoInfo.zoneId.replaceAll("zone_", "")} – ${csoInfo.zoneName}',
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(color: AppColors.darkCardBorder, height: 16),
+
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.2),
+                            child: Text(csoInfo.name[0], style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold, fontSize: 13)),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(csoInfo.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text('📞 ${csoInfo.phone}', style: const TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              CsoContactHelper.initiateCsoCall(
+                                context: context,
+                                ref: ref,
+                                phoneNumber: csoInfo.phone,
+                                officerName: csoInfo.name,
+                                zoneName: csoInfo.zoneName,
+                              );
+                            },
+                            icon: const Icon(Icons.phone, size: 14),
+                            label: Text(AppStrings.tr('callOfficer', currentLang), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
 
             // Profile Options Card
             Card(
