@@ -30,6 +30,7 @@ abstract class IssuesRepository {
     required int rating,
     String? feedback,
   });
+  Future<void> updateIssueStatus(String issueId, IssueStatus newStatus);
 }
 
 class FirestoreIssuesRepository implements IssuesRepository {
@@ -405,6 +406,57 @@ class FirestoreIssuesRepository implements IssuesRepository {
         address: old.address,
         ward: old.ward,
         status: old.status,
+        redAlert: old.redAlert,
+        reportCount: old.reportCount,
+        createdBy: old.createdBy,
+        assignedDepartmentId: old.assignedDepartmentId,
+        assignedWorker: old.assignedWorker,
+        estimatedCost: old.estimatedCost,
+        createdAt: old.createdAt,
+        updatedAt: DateTime.now(),
+        slaDeadline: old.slaDeadline,
+      );
+    }
+  }
+
+  @override
+  Future<void> updateIssueStatus(String issueId, IssueStatus newStatus) async {
+    final db = _db;
+    final data = {
+      'status': newStatus.toValue(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+
+    if (db != null) {
+      try {
+        await db.collection('issues').doc(issueId).update(data);
+      } catch (_) {}
+    }
+
+    final index = _mockIssues.indexWhere((i) => i.id == issueId || i.trackingId == issueId);
+    if (index != -1) {
+      final old = _mockIssues[index];
+      _mockIssues[index] = IssueModel(
+        id: old.id,
+        trackingId: old.trackingId,
+        title: old.title,
+        description: old.description,
+        category: old.category,
+        severity: old.severity,
+        confidenceScore: old.confidenceScore,
+        imageUrl: old.imageUrl,
+        afterImageUrl: old.afterImageUrl,
+        fixQualityScore: old.fixQualityScore,
+        isVerifiedFixed: old.isVerifiedFixed,
+        verificationSummary: old.verificationSummary,
+        reopenCount: old.reopenCount,
+        citizenRating: old.citizenRating,
+        citizenFeedback: old.citizenFeedback,
+        latitude: old.latitude,
+        longitude: old.longitude,
+        address: old.address,
+        ward: old.ward,
+        status: newStatus,
         redAlert: old.redAlert,
         reportCount: old.reportCount,
         createdBy: old.createdBy,
