@@ -218,7 +218,12 @@ class ReportConfirmationScreen extends ConsumerWidget {
 
             // Return Home
             ElevatedButton.icon(
-              onPressed: () => context.go('/'),
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+                context.go('/');
+              },
               icon: const Icon(Icons.home_rounded),
               label: const Text('Return to Citizen Dashboard', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(

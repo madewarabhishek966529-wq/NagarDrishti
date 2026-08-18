@@ -112,5 +112,10 @@ class AppStrings {
       'mr': 'माझा एनएमसी झोन',
       'hi': 'मेरा एनएमसी ज़ोन',
     },
+    'cityServices': {
+      'en': 'City Services & Helplines',
+      'mr': 'नागरी सुविधा व हेल्पलाइन',
+      'hi': 'नगर सेवाएं व हेल्पलाइन',
+    },
   };
 }

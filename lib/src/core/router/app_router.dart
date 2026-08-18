@@ -24,6 +24,7 @@ import 'package:nagardrishti/src/features/cso/presentation/screens/major_problem
 import 'package:nagardrishti/src/features/cso/presentation/screens/cso_zone_map_screen.dart';
 import 'package:nagardrishti/src/features/public_feed/presentation/screens/public_feed_screen.dart';
 import 'package:nagardrishti/src/features/active_work/presentation/screens/active_work_screen.dart';
+import 'package:nagardrishti/src/features/city_services/presentation/screens/city_services_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authStreamState = ref.watch(authStateProvider);
@@ -127,6 +128,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/active-work',
         builder: (context, state) => const ActiveWorkScreen(),
+      ),
+      GoRoute(
+        path: '/city-services',
+        builder: (context, state) => const CityServicesScreen(),
       ),
     ],
     redirect: (context, state) {

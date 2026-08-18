@@ -5,7 +5,7 @@ import '../../../../core/utils/app_language_provider.dart';
 import '../../../home/presentation/screens/home_screen.dart';
 import '../../../map/presentation/screens/map_screen.dart';
 import '../../../report/presentation/screens/report_screen.dart';
-import '../../../leaderboard/presentation/screens/leaderboard_screen.dart';
+import '../../../city_services/presentation/screens/city_services_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
 class MainShellScreen extends ConsumerStatefulWidget {
@@ -22,7 +22,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
     HomeScreen(),
     MapScreen(),
     ReportScreen(),
-    LeaderboardScreen(),
+    CityServicesScreen(),
     ProfileScreen(),
   ];
 
@@ -130,7 +130,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
               _buildNavItem(0, Icons.grid_view_rounded, 'Dashboard'),
               _buildNavItem(1, Icons.map_rounded, 'Live Map'),
               const SizedBox(width: 48), // FAB cutout clearance
-              _buildNavItem(3, Icons.emoji_events_rounded, 'Rankings'),
+              _buildNavItem(3, Icons.apps_rounded, 'Services'),
               _buildNavItem(4, Icons.account_circle_rounded, 'Profile'),
             ],
           ),
